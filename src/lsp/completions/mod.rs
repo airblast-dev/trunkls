@@ -21,14 +21,6 @@ struct TrunkAttrState {
     rel: Option<AssetType>,
 }
 
-fn easy_completion(label: &str, documentation: Option<Documentation>) -> CompletionItem {
-    CompletionItem {
-        label: label.to_string(),
-        documentation,
-        ..Default::default()
-    }
-}
-
 impl TrunkAttrState {
     fn link_to_completion(&self, s: &str, n: Node) -> Option<CompletionResponse> {
         // TODO: report incorrect kind being returned when an empty quoted_attribute_value is
