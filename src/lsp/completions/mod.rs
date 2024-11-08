@@ -57,94 +57,90 @@ impl TrunkAttrState {
             ]));
         }
 
-        error!("nkind={:?}", n.kind());
-        error!("asset_t={:?}", self.rel);
-        if let Some(asset_type) = &self.rel {
-            if matches!(
-                n.kind(),
-                "self_closing_tag" | "start_tag" | "attribute_name" | "attribute"
-            ) {
-                use docs::*;
-                let comps = asset_type
-                    .to_info()
-                    .iter()
-                    .filter_map(|(attr, doc, req): &(&str, &str, RequiresValue)| {
-                        if n.kind() == "attribute"
-                            && !n
-                                .child(0)
-                                .map(|ch| {
-                                    ch.utf8_text(s.as_bytes())
-                                        .is_ok_and(|chs| attr.starts_with(chs))
-                                })
-                                .is_some_and(|b| b)
-                        {
-                            return None;
-                        }
-                        if n.kind() == "attribute_name"
-                            && !n
-                                .utf8_text(s.as_bytes())
-                                .is_ok_and(|ns| attr.starts_with(ns))
-                        {
-                            return None;
-                        }
-                        let attr = if req.should_have_value() {
-                            String::from_iter([attr, "=\"\""])
-                        } else {
-                            attr.to_string()
-                        };
-                        Some(CompletionItem {
-                            label: attr,
-                            documentation: Some(Documentation::MarkupContent(MarkupContent {
-                                kind: MarkupKind::Markdown,
-                                value: doc.to_string(),
-                            })),
-                            ..Default::default()
-                        })
-                    })
-                    .collect();
+        let asset_type = self.rel?;
 
-                return Some(CompletionResponse::Array(comps));
-            }
-
-            let n = if n.kind() == "attribute_value" {
-                let pn = n.parent()?;
-                if pn.kind() == "quoted_attribute_value" {
-                    pn.parent()?
-                } else if pn.kind() == "attribute" {
-                    pn
-                } else {
-                    return None;
-                }
-            } else if n.kind() == "quoted_attribute_value" {
-                n.parent()?
-            } else {
-                return None;
-            };
-
-            let attr_name_str = n.named_child(0)?.utf8_text(s.as_bytes()).ok()?;
-
-            let info = asset_type.to_info();
-            let cur_info = info.iter().filter(|info| info.0 == attr_name_str);
-
-            let comps = cur_info
-                .filter_map(|(_, _, req)| match req {
-                    RequiresValue::Values(accepts) => {
-                        Some(accepts.iter().map(|(val, doc)| CompletionItem {
-                            documentation: Some(Documentation::MarkupContent(MarkupContent {
-                                kind: MarkupKind::Markdown,
-                                value: doc.to_string(),
-                            })),
-                            label: val.to_string(),
-                            ..Default::default()
-                        }))
+        if matches!(
+            n.kind(),
+            "self_closing_tag" | "start_tag" | "attribute_name" | "attribute"
+        ) {
+            use docs::*;
+            let comps = asset_type
+                .to_info()
+                .iter()
+                .filter_map(|(attr, doc, req): &(&str, &str, RequiresValue)| {
+                    if n.kind() == "attribute"
+                        && !n
+                            .child(0)
+                            .map(|ch| {
+                                ch.utf8_text(s.as_bytes())
+                                    .is_ok_and(|chs| attr.starts_with(chs))
+                            })
+                            .is_some_and(|b| b)
+                    {
+                        return None;
                     }
-                    _ => None,
+                    if n.kind() == "attribute_name"
+                        && !n
+                            .utf8_text(s.as_bytes())
+                            .is_ok_and(|ns| attr.starts_with(ns))
+                    {
+                        return None;
+                    }
+                    let attr = if req.should_have_value() {
+                        String::from_iter([attr, "=\"\""])
+                    } else {
+                        attr.to_string()
+                    };
+                    Some(CompletionItem {
+                        label: attr,
+                        documentation: Some(Documentation::MarkupContent(MarkupContent {
+                            kind: MarkupKind::Markdown,
+                            value: doc.to_string(),
+                        })),
+                        ..Default::default()
+                    })
                 })
-                .flatten();
-            return Some(CompletionResponse::Array(comps.collect()));
+                .collect();
+
+            return Some(CompletionResponse::Array(comps));
         }
 
-        None
+        let n = if n.kind() == "attribute_value" {
+            let pn = n.parent()?;
+            if pn.kind() == "quoted_attribute_value" {
+                pn.parent()?
+            } else if pn.kind() == "attribute" {
+                pn
+            } else {
+                return None;
+            }
+        } else if n.kind() == "quoted_attribute_value" {
+            n.parent()?
+        } else {
+            return None;
+        };
+
+        let attr_name_str = n.named_child(0)?.utf8_text(s.as_bytes()).ok()?;
+
+        let info = asset_type.to_info();
+        let cur_info = info.iter().filter(|info| info.0 == attr_name_str);
+
+        let comps = cur_info
+            .filter_map(|(_, _, req)| match req {
+                RequiresValue::Values(accepts) => {
+                    Some(accepts.iter().map(|(val, doc)| CompletionItem {
+                        documentation: Some(Documentation::MarkupContent(MarkupContent {
+                            kind: MarkupKind::Markdown,
+                            value: doc.to_string(),
+                        })),
+                        label: val.to_string(),
+                        ..Default::default()
+                    }))
+                }
+                _ => None,
+            })
+            .flatten();
+        Some(CompletionResponse::Array(comps.collect()))
     }
 
     fn is_data_trunk_attr(&self, s: &str, n: Node) -> bool {
@@ -180,7 +176,7 @@ impl TrunkAttrState {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Copy, Debug)]
 enum AssetType {
     Rust,
     Css,
@@ -194,7 +190,7 @@ enum AssetType {
 }
 
 impl AssetType {
-    fn to_info(&self) -> &[(&str, &str, RequiresValue)] {
+    fn to_info(self) -> &'static [(&'static str, &'static str, RequiresValue)] {
         use docs::*;
         match self {
             AssetType::Rust => RelRust::ASSET_ATTRS,
