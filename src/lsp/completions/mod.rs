@@ -96,7 +96,6 @@ impl TrunkAttrState {
         let asset_type = self.rel?;
 
         if is_attr_name_completion(original.kind()) {
-            error!("attr_name_comp true");
             let tag = attr_node.parent()?;
             let mut cursor = tag.walk();
             let attr_names: Vec<&str> = tag
@@ -113,7 +112,6 @@ impl TrunkAttrState {
         };
 
         if is_attr_value_completion(original.kind()) {
-            error!("attr_val_ fetched");
             let attr_val_str = attr_to_attr_val(attr_node)
                 .and_then(|n| n.utf8_text(s.as_bytes()).ok())
                 .unwrap_or_default();
