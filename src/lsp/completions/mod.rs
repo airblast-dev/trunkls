@@ -54,6 +54,17 @@ fn find_attr(n: Node) -> Option<Node> {
     Some(attr_node)
 }
 
+fn attr_to_attr_val(n: Node) -> Option<Node> {
+    let attr_val = n.named_child(1)?;
+    match attr_val.kind() {
+        "attribute_value" => Some(attr_val),
+        "quoted_attribute_value" => attr_val
+            .named_child(0)
+            .filter(|attr_val| attr_val.kind() == "attribute_value"),
+        _ => None,
+    }
+}
+
 impl TrunkAttrState {
     fn link_to_completion(&self, s: &str, original: Node) -> Option<CompletionResponse> {
         if self.is_data_trunk_attr(s, original) {
@@ -103,7 +114,10 @@ impl TrunkAttrState {
 
         if is_attr_value_completion(original.kind()) {
             error!("attr_val_ fetched");
-            return self.complete_attr_value(s, attr_name_node, asset_type);
+            let attr_val_str = attr_to_attr_val(attr_node)
+                .and_then(|n| n.utf8_text(s.as_bytes()).ok())
+                .unwrap_or_default();
+            return self.complete_attr_value(s, attr_name_node, attr_val_str, asset_type);
         }
 
         None
@@ -169,26 +183,33 @@ impl TrunkAttrState {
         &self,
         s: &str,
         attr_name_node: Node,
+        attr_val_node: &str,
         asset_type: AssetType,
     ) -> Option<CompletionResponse> {
         let info = asset_type.to_info();
         let attr_name_str = attr_name_node.utf8_text(s.as_bytes()).ok()?;
-        let cur_info = info.iter().filter(|info| info.0 == attr_name_str);
 
-        let comps = cur_info
-            .filter_map(|(_, _, req)| match req {
-                RequiresValue::Values(accepts) => {
-                    Some(accepts.iter().map(|(val, doc)| CompletionItem {
-                        documentation: Some(Documentation::MarkupContent(MarkupContent {
-                            kind: MarkupKind::Markdown,
-                            value: doc.to_string(),
-                        })),
-                        label: val.to_string(),
-                        ..Default::default()
-                    }))
-                }
-                _ => None,
-            })
+        let comps = info
+            .iter()
+            .filter(|info| info.0 == attr_name_str)
+            .filter_map(
+                |(attr_name, _, req)| match (req, attr_name_str == *attr_name) {
+                    (RequiresValue::Values(accepts), true) => Some(
+                        accepts
+                            .iter()
+                            .filter(|accepted_val| accepted_val.0.starts_with(attr_val_node))
+                            .map(|(val, doc)| CompletionItem {
+                                documentation: Some(Documentation::MarkupContent(MarkupContent {
+                                    kind: MarkupKind::Markdown,
+                                    value: doc.to_string(),
+                                })),
+                                label: val.to_string(),
+                                ..Default::default()
+                            }),
+                    ),
+                    _ => None,
+                },
+            )
             .flatten();
         Some(CompletionResponse::Array(comps.collect()))
     }
