@@ -224,7 +224,12 @@ optional_asset_attrs! {RelRust,
     ("href", rel_rust::Href::as_str(), ValueRequirment::Requires(true)),
     ("data-target-name", rel_rust::DataTargetName::as_str(), ValueRequirment::Requires(true)),
     ("data-bin", rel_rust::DataBin::as_str(), ValueRequirment::Requires(true)),
-    ("data-type", rel_rust::DataType::as_str(), ValueRequirment::Requires(true)),
+    ("data-type", rel_rust::DataType::as_str(), ValueRequirment::Values(true,
+        &[
+            ("main", "The default way of loading WASM."),
+            ("worker", "To load the WASM as for use in web workers.")
+        ]
+    )),
     ("data-cargo-features", rel_rust::DataCargoFeatures::as_str(), ValueRequirment::Requires(true)),
     ("data-cargo-no-default-features", rel_rust::DataCargoNoDefaultFeatures::as_str(), ValueRequirment::Allows(false)),
     ("data-cargo-all-features", rel_rust::DataCargoAllFeatures::as_str(), ValueRequirment::Allows(false)),
@@ -238,7 +243,6 @@ optional_asset_attrs! {RelRust,
     ("data-bindgen-target", rel_rust::DataBindgenTarget::as_str(), ValueRequirment::Requires(true)),
     ("data-loader-shim", rel_rust::DataLoaderShim::as_str(), ValueRequirment::Requires(false)),
     ("data-cross-origin", rel_rust::DataCrossOrigin::as_str(), ValueRequirment::Requires(true))
-    // add the rest
 }
 
 asset_attrs! {RelCopyDir, RelCopyFile, RelCss, RelIcon, RelInline, RelRust, RelSass, RelScss, RelTailwind}
