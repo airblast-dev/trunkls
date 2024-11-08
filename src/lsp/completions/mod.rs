@@ -119,7 +119,7 @@ impl TrunkAttrState {
                 }
 
                 let insert_kind;
-                let attr = if req.should_have_value() {
+                let attr = if req.must_have_value() {
                     insert_kind = InsertTextFormat::SNIPPET;
                     String::from_iter([attr, "=\"$0\""])
                 } else {

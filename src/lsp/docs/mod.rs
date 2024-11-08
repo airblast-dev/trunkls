@@ -18,7 +18,7 @@ pub enum ValueRequirment {
 }
 
 impl ValueRequirment {
-    pub fn should_have_value(&self) -> bool {
+    pub fn must_have_value(&self) -> bool {
         matches!(self, Self::Requires(true) | Self::Values(true, ..))
     }
 }
