@@ -21,20 +21,53 @@ struct TrunkAttrState {
     rel: Option<AssetType>,
 }
 
-impl TrunkAttrState {
-    fn link_to_completion(&self, s: &str, n: Node) -> Option<CompletionResponse> {
-        // TODO: report incorrect kind being returned when an empty quoted_attribute_value is
-        // present.
-        //
-        // In other words HACK!
+fn is_attr_name_completion(kind: &str) -> bool {
+    matches!(
+        kind,
+        "self_closing_tag" | "start_tag" | "attribute_name" | "attribute"
+    )
+}
 
-        if self.is_data_trunk_attr(s, n) {
+fn is_attr_value_completion(kind: &str) -> bool {
+    matches!(kind, "quoted_attribute_value" | "attribute_value")
+}
+
+fn find_attr(n: Node) -> Option<Node> {
+    let attr_node = match n.kind() {
+        "attribute_value" => {
+            let pn = n.parent()?;
+            match pn.kind() {
+                "quoted_attribute_value" => pn.parent().filter(|ppn| ppn.kind() == "attribute")?,
+                "attribute" => pn,
+                _ => return None,
+            }
+        }
+        "quoted_attribute_value" | "attribute_name" => {
+            n.parent().filter(|pn| pn.kind() == "attribute")?
+        }
+        "attribute" => n,
+        _ => return None,
+    };
+
+    assert_eq!(attr_node.kind(), "attribute");
+
+    Some(attr_node)
+}
+
+impl TrunkAttrState {
+    fn link_to_completion(&self, s: &str, original: Node) -> Option<CompletionResponse> {
+        if self.is_data_trunk_attr(s, original) {
             return Some(CompletionResponse::Array(vec![
                 docs::DataTrunk::completion(),
             ]));
         }
 
-        if self.is_rel_val(s, n) {
+        let attr_node = find_attr(original)?;
+        let attr_name_node = attr_node
+            .named_child(0)
+            .filter(|ann| ann.kind() == "attribute_name")?;
+
+        if self.is_rel_val(s, attr_name_node) {
             use docs::*;
             return Some(CompletionResponse::Array(vec![
                 RelRust::completion(),
@@ -51,69 +84,95 @@ impl TrunkAttrState {
 
         let asset_type = self.rel?;
 
-        if matches!(
-            n.kind(),
-            "self_closing_tag" | "start_tag" | "attribute_name" | "attribute"
-        ) {
-            let comps = asset_type
-                .to_info()
-                .iter()
-                .filter_map(|(attr, doc, req): &(&str, &str, RequiresValue)| {
-                    if n.kind() == "attribute"
-                        && !n
-                            .child(0)
-                            .map(|ch| {
-                                ch.utf8_text(s.as_bytes())
-                                    .is_ok_and(|chs| attr.starts_with(chs))
-                            })
-                            .is_some_and(|b| b)
-                    {
+        if is_attr_name_completion(original.kind()) {
+            error!("attr_name_comp true");
+            let tag = attr_node.parent()?;
+            let mut cursor = tag.walk();
+            let attr_names: Vec<&str> = tag
+                .children(&mut cursor)
+                .filter_map(|n| {
+                    if n.kind() != "attribute" {
                         return None;
                     }
-                    if n.kind() == "attribute_name"
-                        && !n
-                            .utf8_text(s.as_bytes())
-                            .is_ok_and(|ns| attr.starts_with(ns))
-                    {
-                        return None;
-                    }
-                    let attr = if req.should_have_value() {
-                        String::from_iter([attr, "=\"\""])
-                    } else {
-                        attr.to_string()
-                    };
-                    Some(CompletionItem {
-                        label: attr,
-                        documentation: Some(Documentation::MarkupContent(MarkupContent {
-                            kind: MarkupKind::Markdown,
-                            value: doc.to_string(),
-                        })),
-                        ..Default::default()
-                    })
+
+                    n.named_child(0)?.utf8_text(s.as_bytes()).ok()
                 })
                 .collect();
-
-            return Some(CompletionResponse::Array(comps));
-        }
-
-        let n = if n.kind() == "attribute_value" {
-            let pn = n.parent()?;
-            if pn.kind() == "quoted_attribute_value" {
-                pn.parent()?
-            } else if pn.kind() == "attribute" {
-                pn
-            } else {
-                return None;
-            }
-        } else if n.kind() == "quoted_attribute_value" {
-            n.parent()?
-        } else {
-            return None;
+            return self.complete_attr_name(s, attr_names, attr_name_node, asset_type);
         };
 
-        let attr_name_str = n.named_child(0)?.utf8_text(s.as_bytes()).ok()?;
+        if is_attr_value_completion(original.kind()) {
+            error!("attr_val_ fetched");
+            return self.complete_attr_value(s, attr_name_node, asset_type);
+        }
 
+        None
+    }
+
+    /// Accepts a node with a kind of "attribute_name".
+    fn is_data_trunk_attr(&self, s: &str, n: Node) -> bool {
+        if self.data_trunk {
+            return false;
+        }
+        n.kind() == "attribute_name"
+            && n.utf8_text(s.as_bytes())
+                .is_ok_and(|s| s.starts_with("data-"))
+    }
+
+    fn is_rel_val(&self, s: &str, n: Node) -> bool {
+        if self.rel.is_some() {
+            return false;
+        }
+
+        n.utf8_text(s.as_bytes()).is_ok_and(|s| s == "rel")
+    }
+
+    /// Accepts a node with a kind of "attribute_name".
+    fn complete_attr_name(
+        &self,
+        s: &str,
+        attr_names: Vec<&str>,
+        attr_name_node: Node,
+        asset_type: AssetType,
+    ) -> Option<CompletionResponse> {
+        let attr_name_str = attr_name_node.utf8_text(s.as_bytes()).ok()?;
+        let comps = asset_type
+            .to_info()
+            .iter()
+            .filter_map(|(attr, doc, req): &(&str, &str, RequiresValue)| {
+                if (!attr.starts_with(attr_name_str)) || attr_names.contains(attr) {
+                    return None;
+                }
+
+                let attr = if req.should_have_value() {
+                    String::from_iter([attr, "=\"\""])
+                } else {
+                    attr.to_string()
+                };
+
+                Some(CompletionItem {
+                    label: attr,
+                    documentation: Some(Documentation::MarkupContent(MarkupContent {
+                        kind: MarkupKind::Markdown,
+                        value: doc.to_string(),
+                    })),
+                    ..Default::default()
+                })
+            })
+            .collect();
+
+        Some(CompletionResponse::Array(comps))
+    }
+
+    /// Accepts a node with a kind of "attribute_value".
+    fn complete_attr_value(
+        &self,
+        s: &str,
+        attr_name_node: Node,
+        asset_type: AssetType,
+    ) -> Option<CompletionResponse> {
         let info = asset_type.to_info();
+        let attr_name_str = attr_name_node.utf8_text(s.as_bytes()).ok()?;
         let cur_info = info.iter().filter(|info| info.0 == attr_name_str);
 
         let comps = cur_info
@@ -132,38 +191,6 @@ impl TrunkAttrState {
             })
             .flatten();
         Some(CompletionResponse::Array(comps.collect()))
-    }
-
-    fn is_data_trunk_attr(&self, s: &str, n: Node) -> bool {
-        if self.data_trunk {
-            return false;
-        }
-        n.kind() == "attribute_name"
-            && n.utf8_text(s.as_bytes())
-                .is_ok_and(|s| s.starts_with("data-"))
-    }
-
-    fn is_rel_val(&self, s: &str, n: Node) -> bool {
-        if self.rel.is_some() {
-            return false;
-        }
-
-        match n.kind() {
-            "attribute_value" => {
-                n.parent().is_some_and(|p| {
-                    p.kind() == "quoted_attribute_value"
-                        && p.prev_named_sibling()
-                            .is_some_and(|ps| ps.utf8_text(s.as_bytes()) == Ok("rel"))
-                }) || n.prev_named_sibling().is_some_and(|ps| {
-                    ps.kind() == "attribute_name" && ps.utf8_text(s.as_bytes()) == Ok("rel")
-                })
-            }
-
-            "quoted_attribute_value" => n
-                .prev_named_sibling()
-                .is_some_and(|sib| sib.utf8_text(s.as_bytes()) == Ok("rel")),
-            _ => false,
-        }
     }
 }
 
