@@ -95,7 +95,7 @@ fn handle_request(parser: &mut Parser, req: lsp_server::Request) -> anyhow::Resu
             pos.normalize(text);
             return Ok(Response::new_ok(
                 req.id,
-                completions(pos, tree.root_node(), text.text.as_str()),
+                completions(pos, tree.root_node(), text),
             ));
         }
         HoverRequest::METHOD => {

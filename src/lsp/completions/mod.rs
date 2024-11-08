@@ -5,7 +5,7 @@ use std::str::FromStr;
 use derive_more::derive::FromStr;
 use lsp_types::{CompletionItem, CompletionResponse, Documentation, MarkupContent, MarkupKind};
 use streaming_iterator::{IntoStreamingIterator, StreamingIterator};
-use texter::change::GridIndex;
+use texter::{change::GridIndex, core::text::Text};
 use tracing::error;
 use tree_sitter::{Node, QueryCursor};
 
@@ -33,7 +33,7 @@ fn easy_completion(label: &str, documentation: Option<Documentation>) -> Complet
 }
 
 impl TrunkAttrState {
-    fn link_to_completion(&self, s: &str, mut n: Node) -> Option<CompletionResponse> {
+    fn link_to_completion(&self, s: &str, n: Node) -> Option<CompletionResponse> {
         // TODO: report incorrect kind being returned when an empty quoted_attribute_value is
         // present.
         //
@@ -236,7 +236,8 @@ impl FromStr for AssetType {
     }
 }
 
-pub fn completions(pos: GridIndex, n: Node, s: &str) -> Option<CompletionResponse> {
+pub fn completions(pos: GridIndex, n: Node, text: &Text) -> Option<CompletionResponse> {
+    let s = text.text.as_str();
     let lang = n.language();
     let attr_id = lang.id_for_node_kind("attribute", true);
     let attr_name_id = lang.id_for_node_kind("attribute_name", true);
@@ -257,14 +258,34 @@ pub fn completions(pos: GridIndex, n: Node, s: &str) -> Option<CompletionRespons
                 .into_streaming_iter()
         });
     let current = matches.next()?;
-    let in_pos = current.node.named_descendant_for_point_range(
-        {
-            let mut pos = pos;
-            pos.col = pos.col.saturating_sub(1);
-            pos.into()
-        },
-        pos.into(),
-    )?;
+
+    let prev_pos = {
+        let mut pos = pos;
+        pos.col = pos.col.saturating_sub(1);
+        pos
+    };
+    let in_pos = current
+        .node
+        .named_descendant_for_point_range(prev_pos.into(), pos.into())?;
+
+    // If the current position is not preceeded by a whitespace, we cannot give any attribute
+    // completions so we return early.
+    if s.as_bytes()[in_pos.start_byte()] != b' '
+        && matches!(in_pos.kind(), "self_closing_tag" | "start_tag")
+    {
+        return None;
+    }
+
+    // If the end of the found node is " we shouldn't return a completion as the cursor is after a
+    // quote.
+    let byte_pos = text.br_indexes.row_start(pos.row) + pos.col;
+    let prev_byte = s.as_bytes()[byte_pos.saturating_sub(1)];
+    if matches!(prev_byte, b'\'' | b'"')
+        && in_pos.kind() == "quoted_attribute_value"
+        && byte_pos == in_pos.end_byte()
+    {
+        return None;
+    }
 
     let mut cursor = current.node.walk();
     let children = current.node.named_children(&mut cursor);
@@ -284,11 +305,9 @@ pub fn completions(pos: GridIndex, n: Node, s: &str) -> Option<CompletionRespons
         }
 
         let Some(attr_val) = ch.named_child(1).and_then(|c| {
-            error!("attr_val={:?}", c.kind());
             if c.kind_id() == attr_value_id {
                 Some(c)
             } else if c.kind_id() == quoted_attr_value_id {
-                error!("here");
                 c.named_child(0).filter(|c| c.kind_id() == attr_value_id)
             } else {
                 None
