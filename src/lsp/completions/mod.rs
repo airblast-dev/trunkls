@@ -63,7 +63,6 @@ impl TrunkAttrState {
             n.kind(),
             "self_closing_tag" | "start_tag" | "attribute_name" | "attribute"
         ) {
-            use docs::*;
             let comps = asset_type
                 .to_info()
                 .iter()
