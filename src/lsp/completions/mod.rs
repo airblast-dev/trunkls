@@ -1,8 +1,5 @@
-mod asset_completions;
-
 use std::str::FromStr;
 
-use derive_more::derive::FromStr;
 use lsp_types::{CompletionItem, CompletionResponse, Documentation, MarkupContent, MarkupKind};
 use streaming_iterator::{IntoStreamingIterator, StreamingIterator};
 use texter::{change::GridIndex, core::text::Text};
@@ -71,7 +68,7 @@ impl TrunkAttrState {
                 let comps = asset_type
                     .to_info()
                     .iter()
-                    .filter_map(|(attr, doc, req): &(&str, Option<&str>, RequiresValue)| {
+                    .filter_map(|(attr, doc, req): &(&str, &str, RequiresValue)| {
                         if n.kind() == "attribute"
                             && !n
                                 .child(0)
@@ -97,12 +94,10 @@ impl TrunkAttrState {
                         };
                         Some(CompletionItem {
                             label: attr,
-                            documentation: doc.map(|s| {
-                                Documentation::MarkupContent(MarkupContent {
-                                    kind: MarkupKind::Markdown,
-                                    value: s.to_string(),
-                                })
-                            }),
+                            documentation: Some(Documentation::MarkupContent(MarkupContent {
+                                kind: MarkupKind::Markdown,
+                                value: doc.to_string(),
+                            })),
                             ..Default::default()
                         })
                     })
@@ -199,7 +194,7 @@ enum AssetType {
 }
 
 impl AssetType {
-    fn to_info(&self) -> &[(&str, Option<&str>, RequiresValue)] {
+    fn to_info(&self) -> &[(&str, &str, RequiresValue)] {
         use docs::*;
         match self {
             AssetType::Rust => RelRust::ASSET_ATTRS,

@@ -1,4 +1,11 @@
-mod inline;
+mod rel_copy_dir;
+mod rel_copy_file;
+mod rel_css;
+mod rel_icon;
+mod rel_inline;
+mod rel_rust;
+mod rel_sass_scss;
+mod rel_tailwind;
 
 use constcat::concat_slices;
 use lsp_types::{CompletionItem, Documentation, HoverContents, MarkupContent, MarkupKind};
@@ -16,9 +23,9 @@ impl RequiresValue {
     }
 }
 
-const DATA_INTEGRITY: (&str, Option<&str>, RequiresValue) = (
+const DATA_INTEGRITY: (&str, &str, RequiresValue) = (
     "data-integrity",
-    Some("The hashing algorithm that Trunk will use for integrity checking."),
+    "The hashing algorithm that Trunk will use for integrity checking.",
     RequiresValue::Values(&[
         ("none", "Trunk will not perform any hashing to the asset."),
         (
@@ -34,6 +41,18 @@ const DATA_INTEGRITY: (&str, Option<&str>, RequiresValue) = (
             "Trunk will hash the content for integrity checking using `sha512`.",
         ),
     ]),
+);
+
+const DATA_TARGET_PATH: (&str, &str, RequiresValue) = (
+    "data-target-path",
+    "Path where the output is placed inside the `dist` dir. If not present, the directory is placed in the dist root. The path must be a relative path without `..`.",
+    RequiresValue::Bool(true)
+);
+
+const DATA_NO_MINIFY: (&str, &str, RequiresValue) = (
+    "data-no-minify",
+    "Opt-out of minification.",
+    RequiresValue::AcceptsValue(false),
 );
 
 #[macro_export]
@@ -98,8 +117,8 @@ macro_rules! asset_attrs {
     ($($ident:ident),+) => {
         $(
             impl $ident {
-                pub const ASSET_ATTRS: &'static [(&str, Option<&str>, RequiresValue)] = concat_slices!(
-                    [(&str, Option<&str>, RequiresValue)]: $ident::REQUIRED_ASSET_ATTRS, $ident::OPTIONAL_ASSET_ATTRS
+                pub const ASSET_ATTRS: &'static [(&str, &str, RequiresValue)] = concat_slices!(
+                    [(&str, &str, RequiresValue)]: $ident::REQUIRED_ASSET_ATTRS, $ident::OPTIONAL_ASSET_ATTRS
                 ).as_slice();
             }
         )+
@@ -110,7 +129,7 @@ macro_rules! asset_attrs {
 macro_rules! required_asset_attrs {
     ($ident:ident, $($arr:expr),*) => {
         impl $ident {
-            pub const REQUIRED_ASSET_ATTRS: &'static [(&str, Option<&str>, RequiresValue)] = [$($arr),*].as_slice();
+            pub const REQUIRED_ASSET_ATTRS: &'static [(&str, &str, RequiresValue)] = [$($arr),*].as_slice();
         }
     };
 }
@@ -119,7 +138,7 @@ macro_rules! required_asset_attrs {
 macro_rules! optional_asset_attrs {
     ($ident:ident, $($arr:expr),*) => {
         impl $ident {
-            pub const OPTIONAL_ASSET_ATTRS: &'static [(&str, Option<&str>, RequiresValue)] = [$($arr),*].as_slice();
+            pub const OPTIONAL_ASSET_ATTRS: &'static [(&str, &str, RequiresValue)] = [$($arr),*].as_slice();
         }
     };
 }
@@ -138,95 +157,83 @@ load_md!(RelScss, "rel_sass", "scss");
 load_md!(RelTailwind, "rel_tailwind", "tailwind-css");
 
 completions! {DataTrunk, RelCopyDir, RelCopyFile, RelCss, RelIcon, RelInline, RelRust, RelSass, RelScss, RelTailwind}
-required_asset_attrs! {RelCopyFile, ("href", Some("Trunk will copy the file specified in the href attribute to the dist dir."), RequiresValue::Bool(true))}
-optional_asset_attrs! {RelCopyFile, ("data-target-path", None, RequiresValue::Bool(true))}
+required_asset_attrs! {RelCopyFile, ("href", rel_copy_file::Href::as_str(), RequiresValue::Bool(true))}
+optional_asset_attrs! {RelCopyFile, DATA_TARGET_PATH}
 
-required_asset_attrs! {RelCopyDir, ("href", Some("Trunk will recursively copy the directory specified in the href attribute to the dist dir."), RequiresValue::Bool(true))}
-optional_asset_attrs! {RelCopyDir, ("data-target-path", None, RequiresValue::Bool(true))}
+required_asset_attrs! {RelCopyDir, ("href", rel_copy_dir::Href::as_str(), RequiresValue::Bool(true))}
+optional_asset_attrs! {RelCopyDir, DATA_TARGET_PATH}
 
-required_asset_attrs! {RelInline, ("href", Some("Trunk will inline the content of the file specified in the href attribute into index.html."), RequiresValue::Bool(true))}
-optional_asset_attrs! {RelInline, ("type", Some("If not present, the type is inferred by the file extension.
-The accepted values are:
-- html, svg
-- css: CSS wrapped in style tags
-- js: JavaScript wrapped in script tags
-- mjs, module: JavaScript wrapped in script tags with type=\"module\"
-"), RequiresValue::Values(
+required_asset_attrs! {RelInline, ("href", rel_inline::Href::as_str(), RequiresValue::Bool(true))}
+optional_asset_attrs! {RelInline, ("type", rel_inline::Type::as_str(), RequiresValue::Values(
         &[
-            ("html", inline::Html::as_str()),
-            ("svg", inline::Svg::as_str()),
-            ("js", inline::JS::as_str()),
-            ("mjs", inline::MJS::as_str()),
-            ("module", inline::Module::as_str()),
-            ("css", inline::Css::as_str())
+            ("html", rel_inline::Html::as_str()),
+            ("svg", rel_inline::Svg::as_str()),
+            ("js", rel_inline::JS::as_str()),
+            ("mjs", rel_inline::MJS::as_str()),
+            ("module", rel_inline::Module::as_str()),
+            ("css", rel_inline::Css::as_str())
         ]
 ))}
 
-// TODO: add data-integrity docs
-required_asset_attrs! {RelCss, ("href", Some("Trunk will copy linked css files found in the source HTML without content modification."), RequiresValue::Bool(true))}
+required_asset_attrs! {RelCss, ("href", rel_css::Href::as_str(), RequiresValue::Bool(true))}
 optional_asset_attrs! {RelCss,
-    ("data-no-minify", Some("Opt-out of minification."), RequiresValue::AcceptsValue(false)),
-    ("data-target-path", None, RequiresValue::Bool(true)),
+    DATA_NO_MINIFY,
+    DATA_TARGET_PATH,
     DATA_INTEGRITY
 }
 
 required_asset_attrs! {RelIcon,
-    ("href", Some("Trunk will copy the icon image specified in the href attribute to the dist dir. "), RequiresValue::Bool(true))
+    ("href", rel_icon::Href::as_str(), RequiresValue::Bool(true))
 }
 optional_asset_attrs! {RelIcon,
-    ("data-no-minify", Some("Opt-out of minification."), RequiresValue::AcceptsValue(false)),
-    ("data-target-path", None, RequiresValue::Bool(true)),
+DATA_NO_MINIFY,
+DATA_TARGET_PATH,
     DATA_INTEGRITY
 }
 
 required_asset_attrs! {RelTailwind,
-    ("href", Some("The href attribute must be included in the link pointing to the sass/scss file to be processed."), RequiresValue::Bool(true))
+    ("href", rel_tailwind::Href::as_str(), RequiresValue::Bool(true))
 }
 optional_asset_attrs! {RelTailwind,
-    ("data-inline", Some("Trunk will inline the compiled CSS from the tailwind compilation\
-                  into a <style> tag instead of using a <link rel=\"stylesheet\"> tag."), RequiresValue::AcceptsValue(false)),
-    ("data-no-minify", Some("Opt-out of minification."), RequiresValue::AcceptsValue(false)),
-    ("data-target-path", None, RequiresValue::Bool(true)),
+    ("data-inline", rel_tailwind::DataInline::as_str(), RequiresValue::AcceptsValue(false)),
+DATA_NO_MINIFY,
+    DATA_TARGET_PATH,
     DATA_INTEGRITY
 }
 
-required_asset_attrs! {RelSass, ("href", Some("The href attribute must be included in the link pointing to the sass/scss file to be processed."), RequiresValue::Bool(true))}
+required_asset_attrs! {RelSass, ("href", rel_sass_scss::Href::as_str(), RequiresValue::Bool(true))}
 optional_asset_attrs! {RelSass,
-    ("data-inline", Some("Trunk will inline the compiled CSS from the SASS/SCSS file into a <style> tag instead of using a <link rel=\"stylesheet\"> tag."), RequiresValue::AcceptsValue(false)),
-    ("data-target-path", None, RequiresValue::Bool(true)),
+    ("data-inline", rel_sass_scss::DataInline::as_str(), RequiresValue::AcceptsValue(false)),
+    DATA_TARGET_PATH,
     DATA_INTEGRITY
 }
 
-required_asset_attrs! {RelScss, ("href", Some("The href attribute must be included in the link pointing to the sass/scss file to be processed."), RequiresValue::Bool(true))}
+required_asset_attrs! {RelScss, ("href", rel_sass_scss::Href::as_str(), RequiresValue::Bool(true))}
 optional_asset_attrs! {RelScss,
-    ("data-inline", Some("Trunk will inline the compiled CSS from the SASS/SCSS file into a <style> tag instead of using a <link rel=\"stylesheet\"> tag."), RequiresValue::AcceptsValue(false)),
-    ("data-target-path", None, RequiresValue::Bool(true)),
+    ("data-inline", rel_sass_scss::DataInline::as_str(), RequiresValue::AcceptsValue(false)),
+    DATA_TARGET_PATH,
     DATA_INTEGRITY
 }
 
 required_asset_attrs! {RelRust, }
-
 optional_asset_attrs! {RelRust,
-    ("href", Some("The value should be the path to the Cargo.toml of the Rust project.
-
-If a directory is specified, then Trunk will look for the Cargo.toml in the given directory.\
-If no value is specified, then Trunk will look for a Cargo.toml in the parent directory of the source HTML file."), RequiresValue::Bool(true)),
-    ("data-target-name", Some("The the name of the target artifact to load. If the Cargo project has multiple targets (binaries and library), this value can be used to select which one should be used by trunk."), RequiresValue::Bool(true)),
-    ("data-bin", None, RequiresValue::Bool(true)),
-    ("data-type", None, RequiresValue::Bool(true)),
-    ("data-cargo-features", None, RequiresValue::Bool(true)),
-    ("data-cargo-no-default-features", None, RequiresValue::AcceptsValue(false)),
-    ("data-cargo-all-features", None, RequiresValue::AcceptsValue(false)),
-    ("data-wasm-opt", None, RequiresValue::Bool(true)),
-    ("data-wasm-opt-params", None, RequiresValue::Bool(true)),
-    ("data-keep-debug", None, RequiresValue::AcceptsValue(false)),
-    ("data-no-demangle", None, RequiresValue::AcceptsValue(false)),
-    ("data-reference-types", None, RequiresValue::AcceptsValue(false)),
-    ("data-weak-refs", None, RequiresValue::AcceptsValue(false)),
-    ("data-typescript", None, RequiresValue::AcceptsValue(true)),
-    ("data-bindgen-target", None, RequiresValue::Bool(true)),
-    ("data-loader-shim", None, RequiresValue::AcceptsValue(false)),
-    ("data-cross-origin", None, RequiresValue::Bool(true))
+    ("href", rel_rust::Href::as_str(), RequiresValue::Bool(true)),
+    ("data-target-name", rel_rust::DataTargetName::as_str(), RequiresValue::Bool(true)),
+    ("data-bin", rel_rust::DataBin::as_str(), RequiresValue::Bool(true)),
+    ("data-type", rel_rust::DataType::as_str(), RequiresValue::Bool(true)),
+    ("data-cargo-features", rel_rust::DataCargoFeatures::as_str(), RequiresValue::Bool(true)),
+    ("data-cargo-no-default-features", rel_rust::DataCargoNoDefaultFeatures::as_str(), RequiresValue::AcceptsValue(false)),
+    ("data-cargo-all-features", rel_rust::DataCargoAllFeatures::as_str(), RequiresValue::AcceptsValue(false)),
+    ("data-wasm-opt", rel_rust::DataWasmOpt::as_str(), RequiresValue::AcceptsValue(true)),
+    ("data-wasm-opt-params", rel_rust::DataWasmOptParams::as_str(), RequiresValue::Bool(true)),
+    ("data-keep-debug", rel_rust::DataKeepDebug::as_str(), RequiresValue::AcceptsValue(false)),
+    ("data-no-demangle", rel_rust::DataNoDemangle::as_str(), RequiresValue::AcceptsValue(false)),
+    ("data-reference-types", rel_rust::DataReferenceTypes::as_str(), RequiresValue::AcceptsValue(false)),
+    ("data-weak-refs", rel_rust::DataWeakRefs::as_str(), RequiresValue::AcceptsValue(false)),
+    ("data-typescript", rel_rust::DataTypeScript::as_str(), RequiresValue::AcceptsValue(true)),
+    ("data-bindgen-target", rel_rust::DataBindgenTarget::as_str(), RequiresValue::Bool(true)),
+    ("data-loader-shim", rel_rust::DataLoaderShim::as_str(), RequiresValue::AcceptsValue(false)),
+    ("data-cross-origin", rel_rust::DataCrossOrigin::as_str(), RequiresValue::Bool(true))
     // add the rest
 }
 
