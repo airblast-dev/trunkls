@@ -11,48 +11,51 @@ use constcat::concat_slices;
 use lsp_types::{CompletionItem, Documentation, HoverContents, MarkupContent, MarkupKind};
 
 #[derive(Clone, Copy)]
-pub enum RequiresValue {
-    Bool(bool),
-    Values(&'static [(&'static str, &'static str)]),
-    AcceptsValue(bool),
+pub enum ValueRequirment {
+    Requires(bool),
+    Allows(bool),
+    Values(bool, &'static [(&'static str, &'static str)]),
 }
 
-impl RequiresValue {
+impl ValueRequirment {
     pub fn should_have_value(&self) -> bool {
-        matches!(self, Self::Bool(true) | Self::Values(_))
+        matches!(self, Self::Requires(true) | Self::Values(true, ..))
     }
 }
 
-const DATA_INTEGRITY: (&str, &str, RequiresValue) = (
+const DATA_INTEGRITY: (&str, &str, ValueRequirment) = (
     "data-integrity",
     "The hashing algorithm that Trunk will use for integrity checking.",
-    RequiresValue::Values(&[
-        ("none", "Trunk will not perform any hashing to the asset."),
-        (
-            "sha256",
-            "Trunk will hash the content for integrity checking using `sha256`.",
-        ),
-        (
-            "sha384",
-            "Trunk will hash the content for integrity checking using `sha384`.",
-        ),
-        (
-            "sha512",
-            "Trunk will hash the content for integrity checking using `sha512`.",
-        ),
-    ]),
+    ValueRequirment::Values(
+        true,
+        &[
+            ("none", "Trunk will not perform any hashing to the asset."),
+            (
+                "sha256",
+                "Trunk will hash the content for integrity checking using `sha256`.",
+            ),
+            (
+                "sha384",
+                "Trunk will hash the content for integrity checking using `sha384`.",
+            ),
+            (
+                "sha512",
+                "Trunk will hash the content for integrity checking using `sha512`.",
+            ),
+        ],
+    ),
 );
 
-const DATA_TARGET_PATH: (&str, &str, RequiresValue) = (
+const DATA_TARGET_PATH: (&str, &str, ValueRequirment) = (
     "data-target-path",
     "Path where the output is placed inside the `dist` dir. If not present, the directory is placed in the dist root. The path must be a relative path without `..`.",
-    RequiresValue::Bool(true)
+    ValueRequirment::Requires(true)
 );
 
-const DATA_NO_MINIFY: (&str, &str, RequiresValue) = (
+const DATA_NO_MINIFY: (&str, &str, ValueRequirment) = (
     "data-no-minify",
     "Opt-out of minification.",
-    RequiresValue::AcceptsValue(false),
+    ValueRequirment::Requires(false),
 );
 
 #[macro_export]
@@ -117,8 +120,8 @@ macro_rules! asset_attrs {
     ($($ident:ident),+) => {
         $(
             impl $ident {
-                pub const ASSET_ATTRS: &'static [(&str, &str, RequiresValue)] = concat_slices!(
-                    [(&str, &str, RequiresValue)]: $ident::REQUIRED_ASSET_ATTRS, $ident::OPTIONAL_ASSET_ATTRS
+                pub const ASSET_ATTRS: &'static [(&str, &str, ValueRequirment)] = concat_slices!(
+                    [(&str, &str, ValueRequirment)]: $ident::REQUIRED_ASSET_ATTRS, $ident::OPTIONAL_ASSET_ATTRS
                 ).as_slice();
             }
         )+
@@ -129,7 +132,7 @@ macro_rules! asset_attrs {
 macro_rules! required_asset_attrs {
     ($ident:ident, $($arr:expr),*) => {
         impl $ident {
-            pub const REQUIRED_ASSET_ATTRS: &'static [(&str, &str, RequiresValue)] = [$($arr),*].as_slice();
+            pub const REQUIRED_ASSET_ATTRS: &'static [(&str, &str, ValueRequirment)] = [$($arr),*].as_slice();
         }
     };
 }
@@ -138,7 +141,7 @@ macro_rules! required_asset_attrs {
 macro_rules! optional_asset_attrs {
     ($ident:ident, $($arr:expr),*) => {
         impl $ident {
-            pub const OPTIONAL_ASSET_ATTRS: &'static [(&str, &str, RequiresValue)] = [$($arr),*].as_slice();
+            pub const OPTIONAL_ASSET_ATTRS: &'static [(&str, &str, ValueRequirment)] = [$($arr),*].as_slice();
         }
     };
 }
@@ -157,14 +160,15 @@ load_md!(RelScss, "rel_sass", "scss");
 load_md!(RelTailwind, "rel_tailwind", "tailwind-css");
 
 completions! {DataTrunk, RelCopyDir, RelCopyFile, RelCss, RelIcon, RelInline, RelRust, RelSass, RelScss, RelTailwind}
-required_asset_attrs! {RelCopyFile, ("href", rel_copy_file::Href::as_str(), RequiresValue::Bool(true))}
+required_asset_attrs! {RelCopyFile, ("href", rel_copy_file::Href::as_str(), ValueRequirment::Requires(true))}
 optional_asset_attrs! {RelCopyFile, DATA_TARGET_PATH}
 
-required_asset_attrs! {RelCopyDir, ("href", rel_copy_dir::Href::as_str(), RequiresValue::Bool(true))}
+required_asset_attrs! {RelCopyDir, ("href", rel_copy_dir::Href::as_str(), ValueRequirment::Requires(true))}
 optional_asset_attrs! {RelCopyDir, DATA_TARGET_PATH}
 
-required_asset_attrs! {RelInline, ("href", rel_inline::Href::as_str(), RequiresValue::Bool(true))}
-optional_asset_attrs! {RelInline, ("type", rel_inline::Type::as_str(), RequiresValue::Values(
+required_asset_attrs! {RelInline, ("href", rel_inline::Href::as_str(), ValueRequirment::Requires(true))}
+optional_asset_attrs! {RelInline, ("type", rel_inline::Type::as_str(), ValueRequirment::Values(
+        true,
         &[
             ("html", rel_inline::Html::as_str()),
             ("svg", rel_inline::Svg::as_str()),
@@ -175,7 +179,7 @@ optional_asset_attrs! {RelInline, ("type", rel_inline::Type::as_str(), RequiresV
         ]
 ))}
 
-required_asset_attrs! {RelCss, ("href", rel_css::Href::as_str(), RequiresValue::Bool(true))}
+required_asset_attrs! {RelCss, ("href", rel_css::Href::as_str(), ValueRequirment::Requires(true))}
 optional_asset_attrs! {RelCss,
     DATA_NO_MINIFY,
     DATA_TARGET_PATH,
@@ -183,7 +187,7 @@ optional_asset_attrs! {RelCss,
 }
 
 required_asset_attrs! {RelIcon,
-    ("href", rel_icon::Href::as_str(), RequiresValue::Bool(true))
+    ("href", rel_icon::Href::as_str(), ValueRequirment::Requires(true))
 }
 optional_asset_attrs! {RelIcon,
 DATA_NO_MINIFY,
@@ -192,48 +196,48 @@ DATA_TARGET_PATH,
 }
 
 required_asset_attrs! {RelTailwind,
-    ("href", rel_tailwind::Href::as_str(), RequiresValue::Bool(true))
+    ("href", rel_tailwind::Href::as_str(), ValueRequirment::Requires(true))
 }
 optional_asset_attrs! {RelTailwind,
-    ("data-inline", rel_tailwind::DataInline::as_str(), RequiresValue::AcceptsValue(false)),
-DATA_NO_MINIFY,
+    ("data-inline", rel_tailwind::DataInline::as_str(), ValueRequirment::Allows(false)),
+    DATA_NO_MINIFY,
     DATA_TARGET_PATH,
     DATA_INTEGRITY
 }
 
-required_asset_attrs! {RelSass, ("href", rel_sass_scss::Href::as_str(), RequiresValue::Bool(true))}
+required_asset_attrs! {RelSass, ("href", rel_sass_scss::Href::as_str(), ValueRequirment::Requires(true))}
 optional_asset_attrs! {RelSass,
-    ("data-inline", rel_sass_scss::DataInline::as_str(), RequiresValue::AcceptsValue(false)),
+    ("data-inline", rel_sass_scss::DataInline::as_str(), ValueRequirment::Allows(false)),
     DATA_TARGET_PATH,
     DATA_INTEGRITY
 }
 
-required_asset_attrs! {RelScss, ("href", rel_sass_scss::Href::as_str(), RequiresValue::Bool(true))}
+required_asset_attrs! {RelScss, ("href", rel_sass_scss::Href::as_str(), ValueRequirment::Requires(true))}
 optional_asset_attrs! {RelScss,
-    ("data-inline", rel_sass_scss::DataInline::as_str(), RequiresValue::AcceptsValue(false)),
+    ("data-inline", rel_sass_scss::DataInline::as_str(), ValueRequirment::Allows(false)),
     DATA_TARGET_PATH,
     DATA_INTEGRITY
 }
 
 required_asset_attrs! {RelRust, }
 optional_asset_attrs! {RelRust,
-    ("href", rel_rust::Href::as_str(), RequiresValue::Bool(true)),
-    ("data-target-name", rel_rust::DataTargetName::as_str(), RequiresValue::Bool(true)),
-    ("data-bin", rel_rust::DataBin::as_str(), RequiresValue::Bool(true)),
-    ("data-type", rel_rust::DataType::as_str(), RequiresValue::Bool(true)),
-    ("data-cargo-features", rel_rust::DataCargoFeatures::as_str(), RequiresValue::Bool(true)),
-    ("data-cargo-no-default-features", rel_rust::DataCargoNoDefaultFeatures::as_str(), RequiresValue::AcceptsValue(false)),
-    ("data-cargo-all-features", rel_rust::DataCargoAllFeatures::as_str(), RequiresValue::AcceptsValue(false)),
-    ("data-wasm-opt", rel_rust::DataWasmOpt::as_str(), RequiresValue::AcceptsValue(true)),
-    ("data-wasm-opt-params", rel_rust::DataWasmOptParams::as_str(), RequiresValue::Bool(true)),
-    ("data-keep-debug", rel_rust::DataKeepDebug::as_str(), RequiresValue::AcceptsValue(false)),
-    ("data-no-demangle", rel_rust::DataNoDemangle::as_str(), RequiresValue::AcceptsValue(false)),
-    ("data-reference-types", rel_rust::DataReferenceTypes::as_str(), RequiresValue::AcceptsValue(false)),
-    ("data-weak-refs", rel_rust::DataWeakRefs::as_str(), RequiresValue::AcceptsValue(false)),
-    ("data-typescript", rel_rust::DataTypeScript::as_str(), RequiresValue::AcceptsValue(true)),
-    ("data-bindgen-target", rel_rust::DataBindgenTarget::as_str(), RequiresValue::Bool(true)),
-    ("data-loader-shim", rel_rust::DataLoaderShim::as_str(), RequiresValue::AcceptsValue(false)),
-    ("data-cross-origin", rel_rust::DataCrossOrigin::as_str(), RequiresValue::Bool(true))
+    ("href", rel_rust::Href::as_str(), ValueRequirment::Requires(true)),
+    ("data-target-name", rel_rust::DataTargetName::as_str(), ValueRequirment::Requires(true)),
+    ("data-bin", rel_rust::DataBin::as_str(), ValueRequirment::Requires(true)),
+    ("data-type", rel_rust::DataType::as_str(), ValueRequirment::Requires(true)),
+    ("data-cargo-features", rel_rust::DataCargoFeatures::as_str(), ValueRequirment::Requires(true)),
+    ("data-cargo-no-default-features", rel_rust::DataCargoNoDefaultFeatures::as_str(), ValueRequirment::Allows(false)),
+    ("data-cargo-all-features", rel_rust::DataCargoAllFeatures::as_str(), ValueRequirment::Allows(false)),
+    ("data-wasm-opt", rel_rust::DataWasmOpt::as_str(), ValueRequirment::Allows(true)),
+    ("data-wasm-opt-params", rel_rust::DataWasmOptParams::as_str(), ValueRequirment::Allows(true)),
+    ("data-keep-debug", rel_rust::DataKeepDebug::as_str(), ValueRequirment::Allows(false)),
+    ("data-no-demangle", rel_rust::DataNoDemangle::as_str(), ValueRequirment::Allows(false)),
+    ("data-reference-types", rel_rust::DataReferenceTypes::as_str(), ValueRequirment::Allows(false)),
+    ("data-weak-refs", rel_rust::DataWeakRefs::as_str(), ValueRequirment::Allows(false)),
+    ("data-typescript", rel_rust::DataTypeScript::as_str(), ValueRequirment::Allows(true)),
+    ("data-bindgen-target", rel_rust::DataBindgenTarget::as_str(), ValueRequirment::Requires(true)),
+    ("data-loader-shim", rel_rust::DataLoaderShim::as_str(), ValueRequirment::Requires(false)),
+    ("data-cross-origin", rel_rust::DataCrossOrigin::as_str(), ValueRequirment::Requires(true))
     // add the rest
 }
 

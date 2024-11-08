@@ -13,7 +13,7 @@ use crate::utils::{
 };
 
 use super::{
-    docs::{self, RequiresValue},
+    docs::{self, ValueRequirment},
     queries::attributes::TRUNK_ATTRS,
 };
 
@@ -113,7 +113,7 @@ impl TrunkAttrState {
         let comps = asset_type
             .to_info()
             .iter()
-            .filter_map(|(attr, doc, req): &(&str, &str, RequiresValue)| {
+            .filter_map(|(attr, doc, req): &(&str, &str, ValueRequirment)| {
                 if (!attr.starts_with(attr_name_str)) || attr_names.contains(attr) {
                     return None;
                 }
@@ -158,7 +158,7 @@ impl TrunkAttrState {
             .filter(|info| info.0 == attr_name_str)
             .filter_map(
                 |(attr_name, _, req)| match (req, attr_name_str == *attr_name) {
-                    (RequiresValue::Values(accepts), true) => Some(
+                    (ValueRequirment::Values(_, accepts), true) => Some(
                         accepts
                             .iter()
                             .filter(|accepted_val| accepted_val.0.starts_with(attr_val_node))
@@ -193,7 +193,7 @@ enum AssetType {
 }
 
 impl AssetType {
-    fn to_info(self) -> &'static [(&'static str, &'static str, RequiresValue)] {
+    fn to_info(self) -> &'static [(&'static str, &'static str, ValueRequirment)] {
         use docs::*;
         match self {
             AssetType::Rust => RelRust::ASSET_ATTRS,
