@@ -1,6 +1,8 @@
 use std::str::FromStr;
 
-use lsp_types::{CompletionItem, CompletionResponse, Documentation, MarkupContent, MarkupKind};
+use lsp_types::{
+    CompletionItem, CompletionResponse, Documentation, InsertTextFormat, MarkupContent, MarkupKind,
+};
 use streaming_iterator::{IntoStreamingIterator, StreamingIterator};
 use texter::{change::GridIndex, core::text::Text};
 use tracing::error;
@@ -116,9 +118,12 @@ impl TrunkAttrState {
                     return None;
                 }
 
+                let insert_kind;
                 let attr = if req.should_have_value() {
-                    String::from_iter([attr, "=\"\""])
+                    insert_kind = InsertTextFormat::SNIPPET;
+                    String::from_iter([attr, "=\"$0\""])
                 } else {
+                    insert_kind = InsertTextFormat::PLAIN_TEXT;
                     attr.to_string()
                 };
 
@@ -128,6 +133,7 @@ impl TrunkAttrState {
                         kind: MarkupKind::Markdown,
                         value: doc.to_string(),
                     })),
+                    insert_text_format: Some(insert_kind),
                     ..Default::default()
                 })
             })
