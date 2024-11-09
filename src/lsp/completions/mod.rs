@@ -1,7 +1,8 @@
 use std::str::FromStr;
 
 use lsp_types::{
-    CompletionItem, CompletionResponse, Documentation, InsertTextFormat, MarkupContent, MarkupKind,
+    CompletionItem, CompletionItemKind, CompletionResponse, Documentation, InsertTextFormat,
+    MarkupContent, MarkupKind,
 };
 use streaming_iterator::{IntoStreamingIterator, StreamingIterator};
 use texter::{change::GridIndex, core::text::Text};
@@ -67,7 +68,10 @@ impl TrunkAttrState {
                         return None;
                     }
 
-                    n.named_child(0)?.utf8_text(s.as_bytes()).ok()
+                    n.named_child(0)
+                        .filter(|n| n.kind() == "attribute_name")?
+                        .utf8_text(s.as_bytes())
+                        .ok()
                 })
                 .collect();
             return self.complete_attr_name(s, attr_names, attr_name_node, asset_type);
@@ -119,16 +123,21 @@ impl TrunkAttrState {
                 }
 
                 let insert_kind;
-                let attr = if req.must_have_value() {
+                let kind;
+                let f_attr;
+                if req.must_have_value() {
+                    kind = Some(CompletionItemKind::SNIPPET);
                     insert_kind = InsertTextFormat::SNIPPET;
-                    String::from_iter([attr, "=\"$0\""])
+                    f_attr = String::from_iter([attr, "=\"$0\""]);
                 } else {
+                    kind = None;
                     insert_kind = InsertTextFormat::PLAIN_TEXT;
-                    attr.to_string()
+                    f_attr = attr.to_string();
                 };
 
                 Some(CompletionItem {
-                    label: attr,
+                    kind,
+                    label: f_attr,
                     documentation: Some(Documentation::MarkupContent(MarkupContent {
                         kind: MarkupKind::Markdown,
                         value: doc.to_string(),
@@ -179,7 +188,7 @@ impl TrunkAttrState {
     }
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum AssetType {
     Rust,
     Css,
@@ -325,4 +334,25 @@ pub fn completions(pos: GridIndex, n: Node, text: &Text) -> Option<CompletionRes
     }
 
     attr_state.link_to_completion(s, in_pos)
+}
+
+#[cfg(test)]
+mod tests {
+    use std::str::FromStr;
+
+    use crate::lsp::completions::AssetType;
+
+    #[test]
+    fn asset_type_from_str() {
+        assert_eq!(AssetType::from_str("rust"), Ok(AssetType::Rust));
+        assert_eq!(AssetType::from_str("css"), Ok(AssetType::Css));
+        assert_eq!(AssetType::from_str("tailwind-css"), Ok(AssetType::Tailwind));
+        assert_eq!(AssetType::from_str("sass"), Ok(AssetType::Sass));
+        assert_eq!(AssetType::from_str("scss"), Ok(AssetType::Scss));
+        assert_eq!(AssetType::from_str("icon"), Ok(AssetType::Icon));
+        assert_eq!(AssetType::from_str("inline"), Ok(AssetType::Inline));
+        assert_eq!(AssetType::from_str("copy-file"), Ok(AssetType::CopyFile));
+        assert_eq!(AssetType::from_str("copy-dir"), Ok(AssetType::CopyDir));
+        assert_eq!(AssetType::from_str("lol"), Err(()));
+    }
 }
