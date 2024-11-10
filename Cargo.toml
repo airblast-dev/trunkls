@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-texter = { path = "../texter" }
+texter = { path = "../texter", features = ["lsp-types", "tree-sitter"] }
 lsp-types = { version = "0.97.0" }
 lsp-server = { version = "0.7.7" }
 tracing = { version = "0.1.40" }
