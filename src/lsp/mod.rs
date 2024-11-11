@@ -92,7 +92,9 @@ fn handle_request(parser: &mut Parser, req: lsp_server::Request) -> anyhow::Resu
 
             let (tree, text) = docs.get_mut(&uri).expect("unknown doc");
             *tree = parser.parse(text.text.as_str(), Some(tree)).unwrap();
+            error!("pre_pos={:?}", pos);
             pos.normalize(text);
+            error!("post_pos={:?}", pos);
             return Ok(Response::new_ok(
                 req.id,
                 completions(pos, tree.root_node(), text),
