@@ -78,10 +78,7 @@ impl TrunkAttrState {
         };
 
         if is_attr_value_completion(original.kind()) {
-            let attr_val_str = attr_to_attr_val(attr_node)
-                .and_then(|n| n.utf8_text(s.as_bytes()).ok())
-                .unwrap_or_default();
-            return self.complete_attr_value(s, attr_name_node, attr_val_str, asset_type);
+            return self.complete_attr_value(s, attr_name_node, asset_type);
         }
 
         None
@@ -156,7 +153,6 @@ impl TrunkAttrState {
         &self,
         s: &str,
         attr_name_node: Node,
-        attr_val_node: &str,
         asset_type: AssetType,
     ) -> Option<CompletionResponse> {
         let info = asset_type.to_info();
@@ -167,19 +163,16 @@ impl TrunkAttrState {
             .filter(|info| info.0 == attr_name_str)
             .filter_map(
                 |(attr_name, _, req)| match (req, attr_name_str == *attr_name) {
-                    (ValueRequirment::Values(_, accepts), true) => Some(
-                        accepts
-                            .iter()
-                            .filter(|accepted_val| accepted_val.0.starts_with(attr_val_node))
-                            .map(|(val, doc)| CompletionItem {
-                                documentation: Some(Documentation::MarkupContent(MarkupContent {
-                                    kind: MarkupKind::Markdown,
-                                    value: doc.to_string(),
-                                })),
-                                label: val.to_string(),
-                                ..Default::default()
-                            }),
-                    ),
+                    (ValueRequirment::Values(_, accepts), true) => {
+                        Some(accepts.iter().map(|(val, doc)| CompletionItem {
+                            documentation: Some(Documentation::MarkupContent(MarkupContent {
+                                kind: MarkupKind::Markdown,
+                                value: doc.to_string(),
+                            })),
+                            label: val.to_string(),
+                            ..Default::default()
+                        }))
+                    }
                     _ => None,
                 },
             )
