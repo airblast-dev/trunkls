@@ -7,15 +7,15 @@ pub mod queries;
 use anyhow::Context;
 use completions::completions;
 use document::DOCUMENTS;
+use hover::hover;
 use lsp_server::{Connection, Message, Response};
 use lsp_types::{
     notification::{
         DidChangeTextDocument, DidCloseTextDocument, DidOpenTextDocument, Notification,
     },
     request::{Completion, HoverRequest, Request},
-    CompletionContext, CompletionParams, CompletionResponse, DidChangeTextDocumentParams,
-    DidCloseTextDocumentParams, DidOpenTextDocumentParams, HoverParams, TextDocumentPositionParams,
-    Uri,
+    CompletionParams, DidChangeTextDocumentParams, DidCloseTextDocumentParams,
+    DidOpenTextDocumentParams, HoverParams, TextDocumentPositionParams, Uri,
 };
 use texter::change::{Change, GridIndex};
 use tracing::{error, warn};
@@ -109,7 +109,7 @@ fn handle_request(parser: &mut Parser, req: lsp_server::Request) -> anyhow::Resu
             let (tree, text) = docs.get_mut(&id.uri).unwrap();
             let mut pos = GridIndex::from(pos);
             pos.normalize(text);
-            return Ok(Response::new_ok(req.id, None::<()>));
+            return Ok(Response::new_ok(req.id, hover(pos, tree.root_node(), text)));
         }
         _ => {}
     }

@@ -6,12 +6,10 @@ use lsp_types::{
 };
 use streaming_iterator::{IntoStreamingIterator, StreamingIterator};
 use texter::{change::GridIndex, core::text::Text};
-use tracing::error;
+use tracing::{error, instrument, trace};
 use tree_sitter::{Node, QueryCursor};
 
-use crate::utils::{
-    attr_to_attr_val, find_attr, is_attr_name_completion, is_attr_value_completion,
-};
+use crate::utils::{find_attr, is_attr_name_completion, is_attr_value_completion};
 
 use super::{
     docs::{self, ValueRequirment},
@@ -19,17 +17,17 @@ use super::{
 };
 
 #[derive(Clone, Debug, Default)]
-struct TrunkAttrState {
+pub struct TrunkAttrState {
     // Wether a data-trunk attribute is already present.
-    data_trunk: bool,
+    pub data_trunk: bool,
     // If an asset type is currently selected.
     //
     // for example `rel=""` is `None` but `rel="css"` is `Some(AssetType::Css)`
-    rel: Option<AssetType>,
+    pub rel: Option<AssetType>,
 }
 
 impl TrunkAttrState {
-    fn link_to_completion(&self, s: &str, original: Node) -> Option<CompletionResponse> {
+    pub fn link_to_completion(&self, s: &str, original: Node) -> Option<CompletionResponse> {
         if self.is_data_trunk_attr(s, original) {
             return Some(CompletionResponse::Array(vec![
                 docs::DataTrunk::completion(),
@@ -85,7 +83,7 @@ impl TrunkAttrState {
     }
 
     /// Accepts a node with a kind of "attribute_name".
-    fn is_data_trunk_attr(&self, s: &str, n: Node) -> bool {
+    pub fn is_data_trunk_attr(&self, s: &str, n: Node) -> bool {
         if self.data_trunk {
             return false;
         }
@@ -94,7 +92,7 @@ impl TrunkAttrState {
                 .is_ok_and(|s| s.starts_with("data-"))
     }
 
-    fn is_rel_val(&self, s: &str, n: Node) -> bool {
+    pub fn is_rel_val(&self, s: &str, n: Node) -> bool {
         if self.rel.is_some() {
             return false;
         }
@@ -103,7 +101,7 @@ impl TrunkAttrState {
     }
 
     /// Accepts a node with a kind of "attribute_name".
-    fn complete_attr_name(
+    pub fn complete_attr_name(
         &self,
         s: &str,
         attr_names: Vec<&str>,
@@ -179,10 +177,57 @@ impl TrunkAttrState {
             .flatten();
         Some(CompletionResponse::Array(comps.collect()))
     }
+
+    #[instrument(level = "trace", skip(elem_nodes))]
+    pub fn from_elem_items<'a, I: Iterator<Item = Node<'a>>>(s: &str, elem_nodes: I) -> Option<Self> {
+        let mut attr_state = Self::default();
+        for ch in elem_nodes {
+            let Some(attr_name) = ch.named_child(0).filter(|c| c.kind() == "attribute_name") else {
+                continue;
+            };
+
+            let Ok(attr_name_str) = attr_name.utf8_text(s.as_bytes()) else {
+                error!("unable to get UTF8 from attribute name node");
+                continue;
+            };
+
+            if !attr_state.data_trunk && attr_name_str == "data-trunk" {
+                attr_state.data_trunk = true;
+            }
+
+            let Some(attr_val) = ch.named_child(1).and_then(|c| {
+                if c.kind() == "attribute_value" {
+                    Some(c)
+                } else if c.kind() == "quoted_attribute_value" {
+                    c.named_child(0).filter(|c| c.kind() == "attribute_value")
+                } else {
+                    None
+                }
+            }) else {
+                error!(
+                    "cant get attr val child for = {:?}",
+                    ch.utf8_text(s.as_bytes())
+                );
+                continue;
+            };
+
+            let Ok(attr_val_str) = attr_val.utf8_text(s.as_bytes()) else {
+                error!("unable to get UTF8 from attribute value node");
+                continue;
+            };
+
+            if attr_name_str == "rel" {
+                trace!("settings rel");
+                attr_state.rel = AssetType::from_str(attr_val_str).ok();
+            }
+        }
+
+        Some(attr_state)
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-enum AssetType {
+pub enum AssetType {
     Rust,
     Css,
     Tailwind,
@@ -195,7 +240,7 @@ enum AssetType {
 }
 
 impl AssetType {
-    fn to_info(self) -> &'static [(&'static str, &'static str, ValueRequirment)] {
+    pub fn to_info(self) -> &'static [(&'static str, &'static str, ValueRequirment)] {
         use docs::*;
         match self {
             AssetType::Rust => RelRust::ASSET_ATTRS,
@@ -236,9 +281,6 @@ pub fn completions(pos: GridIndex, n: Node, text: &Text) -> Option<CompletionRes
     let s = text.text.as_str();
     let lang = n.language();
     let attr_id = lang.id_for_node_kind("attribute", true);
-    let attr_name_id = lang.id_for_node_kind("attribute_name", true);
-    let quoted_attr_value_id = lang.id_for_node_kind("quoted_attribute_value", true);
-    let attr_value_id = lang.id_for_node_kind("attribute_value", true);
     let mut cursor = QueryCursor::new();
     let element_id = TRUNK_ATTRS
         .capture_names()
@@ -285,46 +327,8 @@ pub fn completions(pos: GridIndex, n: Node, text: &Text) -> Option<CompletionRes
 
     let mut cursor = current.node.walk();
     let children = current.node.named_children(&mut cursor);
-    let mut attr_state = TrunkAttrState::default();
-    for ch in children.filter(|ch| ch.kind_id() == attr_id) {
-        let Some(attr_name) = ch.named_child(0).filter(|c| c.kind_id() == attr_name_id) else {
-            continue;
-        };
-
-        let Ok(attr_name_str) = attr_name.utf8_text(s.as_bytes()) else {
-            error!("unable to get UTF8 from attribute name node");
-            continue;
-        };
-
-        if !attr_state.data_trunk && attr_name_str == "data-trunk" {
-            attr_state.data_trunk = true;
-        }
-
-        let Some(attr_val) = ch.named_child(1).and_then(|c| {
-            if c.kind_id() == attr_value_id {
-                Some(c)
-            } else if c.kind_id() == quoted_attr_value_id {
-                c.named_child(0).filter(|c| c.kind_id() == attr_value_id)
-            } else {
-                None
-            }
-        }) else {
-            error!(
-                "cant get attr val child for = {:?}",
-                ch.utf8_text(s.as_bytes())
-            );
-            continue;
-        };
-
-        let Ok(attr_val_str) = attr_val.utf8_text(s.as_bytes()) else {
-            error!("unable to get UTF8 from attribute value node");
-            continue;
-        };
-
-        if attr_name_str == "rel" {
-            attr_state.rel = AssetType::from_str(attr_val_str).ok();
-        }
-    }
+    let attr_state =
+        TrunkAttrState::from_elem_items(s, children.filter(|ch| ch.kind_id() == attr_id))?;
 
     attr_state.link_to_completion(s, in_pos)
 }

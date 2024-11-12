@@ -687,6 +687,7 @@ version = "0.1.0"
 dependencies = [
  "lsp-types",
  "memchr",
+ "tracing",
  "tree-sitter",
 ]
 

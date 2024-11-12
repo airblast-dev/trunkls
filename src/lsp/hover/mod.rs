@@ -1,2 +1,112 @@
+use lsp_types::{Hover, HoverContents, MarkupContent, MarkupKind, Range};
+use texter::{change::GridIndex, core::text::Text};
+use tracing::{debug, instrument, trace};
+use tree_sitter::Node;
 
+use crate::utils::{find_attr, find_elem};
 
+use super::{
+    completions::TrunkAttrState,
+    docs::{DataTrunk, ValueRequirment},
+};
+
+#[instrument(level = "trace")]
+pub fn hover(pos: GridIndex, n: Node, text: &Text) -> Option<Hover> {
+    let in_pos = n.named_descendant_for_point_range(pos.into(), pos.into())?;
+
+    let elem = find_elem(in_pos)?;
+    trace!("elem={:?}", elem.utf8_text(text.text.as_bytes()));
+
+    let mut cursor = elem.walk();
+    let attr_state = TrunkAttrState::from_elem_items(
+        text.text.as_str(),
+        elem.children(&mut cursor)
+            .filter(|ch| ch.kind() == "attribute"),
+    )?;
+
+    trace!("in_pos_kind={:?}", in_pos.kind());
+    match in_pos.kind() {
+        "attribute_name" => hover_attribute_name(text, in_pos, &attr_state),
+        "attribute_value" => hover_attribute_value(text, in_pos, &attr_state),
+        _ => None,
+    }
+}
+
+#[instrument(skip(text), level = "trace")]
+fn hover_attribute_name(text: &Text, in_pos: Node, attr_state: &TrunkAttrState) -> Option<Hover> {
+    assert_eq!(in_pos.kind(), "attribute_name");
+
+    if in_pos.utf8_text(text.text.as_bytes()).ok()? == DataTrunk::DOC_OF {
+        return Some(Hover {
+            contents: DataTrunk::hover_contents(),
+            range: None,
+        });
+    }
+
+    trace!("getting attr name str");
+    let attr_name_str = in_pos.utf8_text(text.text.as_bytes()).ok()?;
+    trace!("attr_name_str={:?}", attr_name_str);
+
+    trace!("Geting attribute value for rel attribute");
+    let rel = attr_state.rel?;
+    trace!("Found asset type = {:?}", rel);
+
+    trace!("Finding asset specific hover");
+    let hover = rel
+        .to_info()
+        .iter()
+        .find(|(attr_name, _, _)| *attr_name == attr_name_str)
+        .map(|(a, b, _)| (a, b))?;
+
+    trace!("Found asset specific hover");
+    let mut start_pos = GridIndex::from(in_pos.start_position());
+    start_pos.denormalize(text);
+    let mut end_pos = GridIndex::from(in_pos.end_position());
+    end_pos.denormalize(text);
+    Some(Hover {
+        contents: HoverContents::Markup(MarkupContent {
+            kind: MarkupKind::Markdown,
+            value: hover.1.to_string(),
+        }),
+        range: Some(Range {
+            start: start_pos.into(),
+            end: end_pos.into(),
+        }),
+    })
+}
+
+#[instrument(skip(text), level = "trace")]
+fn hover_attribute_value(text: &Text, in_pos: Node, attr_state: &TrunkAttrState) -> Option<Hover> {
+    assert_eq!(in_pos.kind(), "attribute_value");
+    let attr_node = find_attr(in_pos)?;
+    let attr_name_node = attr_node
+        .named_child(0)
+        .filter(|n| n.kind() == "attribute_name")?;
+    let attr_name_str = attr_name_node.utf8_text(text.text.as_bytes()).ok()?;
+    let attr_val_str = in_pos.utf8_text(text.text.as_bytes()).ok()?;
+    let rel = attr_state.rel?;
+    let (_, _, req) = rel
+        .to_info()
+        .iter()
+        .find(|(attr_name, _, _)| *attr_name == attr_name_str)?;
+    let (_, val_doc) = match req {
+        ValueRequirment::Values(_, vals) => *vals.iter().find(|(val, _)| *val == attr_val_str)?,
+        _ => return None,
+    };
+
+    let mut start_pos = GridIndex::from(in_pos.start_position());
+    start_pos.denormalize(text);
+    let mut end_pos = GridIndex::from(in_pos.end_position());
+    end_pos.denormalize(text);
+
+    Some(Hover {
+        contents: HoverContents::Markup(MarkupContent {
+            kind: MarkupKind::Markdown,
+            value: val_doc.to_string(),
+        }),
+        range: Some(Range {
+            start: start_pos.into(),
+            end: end_pos.into(),
+        }),
+    })
+}

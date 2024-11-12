@@ -43,3 +43,11 @@ pub fn attr_to_attr_val(n: Node) -> Option<Node> {
         _ => None,
     }
 }
+
+pub fn find_elem(mut n: Node) -> Option<Node> {
+    while !matches!(n.kind(), "start_tag" | "self_closing_tag") {
+        n = n.parent()?;
+    }
+
+    Some(n)
+}
