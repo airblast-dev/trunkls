@@ -1,14 +1,14 @@
 use lsp_types::{Hover, HoverContents, MarkupContent, MarkupKind, Range};
 use texter::{change::GridIndex, core::text::Text};
-use tracing::{debug, instrument, trace};
+use tracing::{instrument, trace};
 use tree_sitter::Node;
 
-use crate::utils::{find_attr, find_elem};
-
-use super::{
-    completions::TrunkAttrState,
-    docs::{DataTrunk, ValueRequirment},
+use crate::{
+    attr_state::TrunkAttrState,
+    utils::{find_attr, find_elem},
 };
+
+use super::docs::{DataTrunk, ValueRequirment};
 
 #[instrument(level = "trace")]
 pub fn hover(pos: GridIndex, n: Node, text: &Text) -> Option<Hover> {

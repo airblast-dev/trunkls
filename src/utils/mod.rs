@@ -33,17 +33,6 @@ pub fn find_attr(n: Node) -> Option<Node> {
     Some(attr_node)
 }
 
-pub fn attr_to_attr_val(n: Node) -> Option<Node> {
-    let attr_val = n.named_child(1)?;
-    match attr_val.kind() {
-        "attribute_value" => Some(attr_val),
-        "quoted_attribute_value" => attr_val
-            .named_child(0)
-            .filter(|attr_val| attr_val.kind() == "attribute_value"),
-        _ => None,
-    }
-}
-
 pub fn find_elem(mut n: Node) -> Option<Node> {
     while !matches!(n.kind(), "start_tag" | "self_closing_tag") {
         n = n.parent()?;

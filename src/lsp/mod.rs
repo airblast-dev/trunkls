@@ -1,5 +1,5 @@
 mod completions;
-mod docs;
+pub mod docs;
 mod document;
 mod hover;
 pub mod queries;

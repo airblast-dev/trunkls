@@ -62,7 +62,9 @@ const DATA_NO_MINIFY: (&str, &str, ValueRequirment) = (
 macro_rules! load_md {
     ($struct:ident, $path:literal, $doc_of:literal) => {
         impl $struct {
+            #[allow(unused)]
             pub const DOC_OF: &'static str = $doc_of;
+            #[allow(unused)]
             pub const fn as_str() -> &'static str {
                 include_str!(concat!($path, ".md"))
             }
@@ -104,6 +106,7 @@ macro_rules! hover {
     ($($ident:ident),+) => {
         $(
             impl $ident {
+                #[allow(unused)]
                 pub fn hover_contents() -> HoverContents {
                     HoverContents::Markup(MarkupContent {
                         kind: MarkupKind::Markdown,
