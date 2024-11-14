@@ -18,7 +18,7 @@ use lsp_types::{
     DidOpenTextDocumentParams, HoverParams, TextDocumentPositionParams, Uri,
 };
 use texter::change::{Change, GridIndex};
-use tracing::{error, warn, trace};
+use tracing::warn;
 use tree_sitter::Parser;
 
 use crate::init::TextFn;
@@ -89,7 +89,9 @@ fn handle_request(parser: &mut Parser, req: lsp_server::Request) -> anyhow::Resu
                 )
             };
 
-            let (tree, text) = docs.get_mut(&uri).context("Requested completion for unknown document.")?;
+            let (tree, text) = docs
+                .get_mut(&uri)
+                .context("Requested completion for unknown document.")?;
             *tree = parser.parse(text.text.as_str(), Some(tree)).unwrap();
             pos.normalize(text);
             return Ok(Response::new_ok(
@@ -103,7 +105,9 @@ fn handle_request(parser: &mut Parser, req: lsp_server::Request) -> anyhow::Resu
                 text_document: id,
                 position: pos,
             } = p.text_document_position_params;
-            let (tree, text) = docs.get_mut(&id.uri).context("Requested hover for unknown document.")?;
+            let (tree, text) = docs
+                .get_mut(&id.uri)
+                .context("Requested hover for unknown document.")?;
             *tree = parser.parse(text.text.as_str(), Some(tree)).unwrap();
             let mut pos = GridIndex::from(pos);
             pos.normalize(text);
