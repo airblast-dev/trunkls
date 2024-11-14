@@ -28,8 +28,8 @@ fn main() -> anyhow::Result<()> {
 
     let cfg = Config::parse();
 
-    if let Some(lf) = cfg.log_file.as_deref() {
-        log_to_file(lf)?;
+    if let Some(lf) = cfg.log_file.as_deref().map(shellexpand::full) {
+        log_to_file(lf?)?;
     } else {
         log_to_stdout();
     }
