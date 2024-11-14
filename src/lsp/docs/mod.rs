@@ -176,7 +176,7 @@ optional_asset_attrs! {RelInline, ("type", rel_inline::Type::as_str(), ValueRequ
             ("html", rel_inline::Html::as_str()),
             ("svg", rel_inline::Svg::as_str()),
             ("js", rel_inline::JS::as_str()),
-            ("mjs", rel_inline::MJS::as_str()),
+            ("mjs", rel_inline::Mjs::as_str()),
             ("module", rel_inline::Module::as_str()),
             ("css", rel_inline::Css::as_str())
         ]
