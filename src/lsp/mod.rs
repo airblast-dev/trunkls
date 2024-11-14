@@ -27,7 +27,6 @@ pub fn main_loop(text_fn: TextFn, con: Connection) -> anyhow::Result<()> {
     let mut parser = Parser::new();
     parser.set_language(&tree_sitter_html::LANGUAGE.into())?;
     for msg in con.receiver {
-        trace!("Received message -> {:?}", msg);
         match msg {
             Message::Notification(noti) => handle_notification(&mut parser, text_fn, noti)?,
             Message::Request(req) => con
