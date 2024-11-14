@@ -90,7 +90,7 @@ fn handle_request(parser: &mut Parser, req: lsp_server::Request) -> anyhow::Resu
                 )
             };
 
-            let (tree, text) = docs.get_mut(&uri).expect("unknown doc");
+            let (tree, text) = docs.get_mut(&uri).context("Requested completion for unknown document.")?;
             *tree = parser.parse(text.text.as_str(), Some(tree)).unwrap();
             pos.normalize(text);
             return Ok(Response::new_ok(
@@ -104,7 +104,7 @@ fn handle_request(parser: &mut Parser, req: lsp_server::Request) -> anyhow::Resu
                 text_document: id,
                 position: pos,
             } = p.text_document_position_params;
-            let (tree, text) = docs.get_mut(&id.uri).unwrap();
+            let (tree, text) = docs.get_mut(&id.uri).context("Requested hover for unknown document.")?;
             *tree = parser.parse(text.text.as_str(), Some(tree)).unwrap();
             let mut pos = GridIndex::from(pos);
             pos.normalize(text);
