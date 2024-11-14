@@ -15,6 +15,7 @@ pub fn hover(pos: GridIndex, n: Node, text: &Text) -> Option<Hover> {
     let in_pos = n.named_descendant_for_point_range(pos.into(), pos.into())?;
 
     let elem = find_elem(in_pos)?;
+    trace!("in_post_utf8={:?}", in_pos.utf8_text(text.text.as_bytes()));
     trace!("elem={:?}", elem.utf8_text(text.text.as_bytes()));
 
     let mut cursor = elem.walk();

@@ -18,7 +18,7 @@ use lsp_types::{
     DidOpenTextDocumentParams, HoverParams, TextDocumentPositionParams, Uri,
 };
 use texter::change::{Change, GridIndex};
-use tracing::{error, warn};
+use tracing::{error, warn, trace};
 use tree_sitter::Parser;
 
 use crate::init::TextFn;
@@ -27,7 +27,7 @@ pub fn main_loop(text_fn: TextFn, con: Connection) -> anyhow::Result<()> {
     let mut parser = Parser::new();
     parser.set_language(&tree_sitter_html::LANGUAGE.into())?;
     for msg in con.receiver {
-        error!("Received message -> {:?}", msg);
+        trace!("Received message -> {:?}", msg);
         match msg {
             Message::Notification(noti) => handle_notification(&mut parser, text_fn, noti)?,
             Message::Request(req) => con
@@ -64,7 +64,7 @@ fn handle_notification(
         DidCloseTextDocument::METHOD => {
             let p: DidCloseTextDocumentParams = serde_json::from_value(noti.params)?;
             if docs.remove(&p.text_document.uri).is_none() {
-                warn!("Closed unregistered document.")
+                warn!("Closed non registered document.")
             }
         }
         method => warn!("Unsupported notification recieved -> {}", method),
@@ -92,9 +92,7 @@ fn handle_request(parser: &mut Parser, req: lsp_server::Request) -> anyhow::Resu
 
             let (tree, text) = docs.get_mut(&uri).expect("unknown doc");
             *tree = parser.parse(text.text.as_str(), Some(tree)).unwrap();
-            error!("pre_pos={:?}", pos);
             pos.normalize(text);
-            error!("post_pos={:?}", pos);
             return Ok(Response::new_ok(
                 req.id,
                 completions(pos, tree.root_node(), text),
