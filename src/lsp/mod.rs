@@ -107,6 +107,7 @@ fn handle_request(parser: &mut Parser, req: lsp_server::Request) -> anyhow::Resu
                 position: pos,
             } = p.text_document_position_params;
             let (tree, text) = docs.get_mut(&id.uri).unwrap();
+            *tree = parser.parse(text.text.as_str(), Some(tree)).unwrap();
             let mut pos = GridIndex::from(pos);
             pos.normalize(text);
             return Ok(Response::new_ok(req.id, hover(pos, tree.root_node(), text)));
