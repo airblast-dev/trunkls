@@ -8,8 +8,7 @@ module.exports = {
     /** @type {import("vscode-languageclient/node").ServerOptions} */
     const serverOptions = {
       run: {
-        command: "/home/airblast/.cargo/bin/trunkls",
-	args: ["-o", "/home/airblast/Desktop/text.log"]
+        command: "trunkls",
       },
       debug: {
         command: "trunkls",
@@ -23,8 +22,8 @@ module.exports = {
     };
 
     const client = new LanguageClient(
-      "htmx-lsp",
-      "Htmx Language Server",
+      "trunkls",
+      "Trunk Language Server",
       serverOptions,
       clientOptions
     );

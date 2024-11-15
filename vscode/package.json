@@ -1,14 +1,13 @@
 {
-	"name": "htmx-lsp",
-	"description": "Language Server for HTMX",
+	"name": "trunkls",
+	"description": "Language Server for Trunk",
 	"version": "0.0.1",
 	"contributors": [
-		"ThePrimeagen",
-		"MNThomson"
+		"airblast"
 	],
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/ThePrimeagen/htmx-lsp"
+		"url": "https://github.com/airblast-dev/trunkls"
 	},
 	"engines": {
 		"vscode": "^1.74.0"
@@ -20,5 +19,5 @@
 	"dependencies": {
 		"vscode-languageclient": "^8.1.0"
 	},
-	"publisher": "Asd"
+	"publisher": "airblast"
 }
