@@ -8,7 +8,7 @@ pub static TRUNK_ATTRS: LazyLock<Query> = LazyLock::new(|| {
     const QS: &str =r#"
     (_
             (tag_name) @tag.name
-            (#eq? @tag.name link)
+            (#any-of? @tag.name "link" "script")
             (attribute(attribute_name) @attr.name)+
             (#any-eq? @attr.name "data-trunk")
     ) @element

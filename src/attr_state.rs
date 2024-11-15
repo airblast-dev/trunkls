@@ -10,6 +10,34 @@ pub struct TrunkAttrState {
     //
     // for example `rel=""` is `None` but `rel="css"` is `Some(AssetType::Css)`
     pub rel: Option<AssetType>,
+    pub tag_name: TagName,
+}
+
+impl TrunkAttrState {
+    pub fn with_tag_name(tag_name: TagName) -> Self {
+        Self {
+            tag_name,
+            ..Default::default()
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Default)]
+pub enum TagName {
+    #[default]
+    Unknown,
+    Link,
+    Script,
+}
+
+impl From<&str> for TagName {
+    fn from(s: &str) -> Self {
+        match s {
+            "link" => Self::Link,
+            "script" => Self::Script,
+            _ => Self::Unknown,
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

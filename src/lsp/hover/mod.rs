@@ -19,11 +19,8 @@ pub fn hover(pos: GridIndex, n: Node, text: &Text) -> Option<Hover> {
     trace!("elem={:?}", elem.utf8_text(text.text.as_bytes()));
 
     let mut cursor = elem.walk();
-    let attr_state = TrunkAttrState::from_elem_items(
-        text.text.as_str(),
-        elem.children(&mut cursor)
-            .filter(|ch| ch.kind() == "attribute"),
-    )?;
+    let attr_state =
+        TrunkAttrState::from_elem_items(text.text.as_str(), elem.named_children(&mut cursor))?;
 
     trace!("in_pos_kind={:?}", in_pos.kind());
     match in_pos.kind() {

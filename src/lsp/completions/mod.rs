@@ -10,17 +10,60 @@ use tracing::{error, instrument, trace};
 use tree_sitter::{Node, QueryCursor};
 
 use crate::{
-    attr_state::{AssetType, TrunkAttrState},
+    attr_state::{AssetType, TagName, TrunkAttrState},
     utils::{find_attr, is_attr_name_completion, is_attr_value_completion},
 };
 
 use super::{
-    docs::{self, ValueRequirment},
+    docs::{self, Script, ValueRequirment},
     queries::attributes::TRUNK_ATTRS,
 };
 
 impl TrunkAttrState {
-    pub fn link_to_completion(&self, s: &str, original: Node) -> Option<CompletionResponse> {
+    fn to_completion(&self, s: &str, original: Node) -> Option<CompletionResponse> {
+        match self.tag_name {
+            TagName::Link => self.link_to_completion(s, original),
+            TagName::Script => self.script_to_completion(s, original),
+            TagName::Unknown => None,
+        }
+    }
+
+    fn script_to_completion(&self, s: &str, original: Node) -> Option<CompletionResponse> {
+        if self.is_data_trunk_attr(s, original) {
+            return Some(CompletionResponse::Array(vec![
+                docs::DataTrunk::completion(),
+            ]));
+        }
+
+        let attr_node = find_attr(original)?;
+
+        if is_attr_name_completion(original.kind()) {
+            let tag = attr_node.parent()?;
+            let mut cursor = tag.walk();
+            let attr_names: Vec<&str> = tag
+                .named_children(&mut cursor)
+                .filter_map(|n| {
+                    if n.kind() != "attribute" {
+                        return None;
+                    }
+
+                    n.named_child(0)
+                        .filter(|n| n.kind() == "attribute_name")?
+                        .utf8_text(s.as_bytes())
+                        .ok()
+                })
+                .collect();
+            return self.complete_script_attr_name(s, attr_names, original);
+        }
+
+        if is_attr_value_completion(original.kind()) {
+            return self.complete_script_attr_value(s, attr_node.named_child(0)?);
+        }
+
+        None
+    }
+
+    fn link_to_completion(&self, s: &str, original: Node) -> Option<CompletionResponse> {
         if self.is_data_trunk_attr(s, original) {
             return Some(CompletionResponse::Array(vec![
                 docs::DataTrunk::completion(),
@@ -53,7 +96,7 @@ impl TrunkAttrState {
             let tag = attr_node.parent()?;
             let mut cursor = tag.walk();
             let attr_names: Vec<&str> = tag
-                .children(&mut cursor)
+                .named_children(&mut cursor)
                 .filter_map(|n| {
                     if n.kind() != "attribute" {
                         return None;
@@ -65,11 +108,11 @@ impl TrunkAttrState {
                         .ok()
                 })
                 .collect();
-            return self.complete_attr_name(s, attr_names, attr_name_node, asset_type);
+            return self.complete_link_attr_name(s, attr_names, attr_name_node, asset_type);
         };
 
         if is_attr_value_completion(original.kind()) {
-            return self.complete_attr_value(s, attr_name_node, asset_type);
+            return self.complete_link_attr_value(s, attr_name_node, asset_type);
         }
 
         None
@@ -94,7 +137,7 @@ impl TrunkAttrState {
     }
 
     /// Accepts a node with a kind of "attribute_name".
-    pub fn complete_attr_name(
+    pub fn complete_link_attr_name(
         &self,
         s: &str,
         attr_names: Vec<&str>,
@@ -140,7 +183,7 @@ impl TrunkAttrState {
     }
 
     /// Accepts a node with a kind of "attribute_value".
-    fn complete_attr_value(
+    fn complete_link_attr_value(
         &self,
         s: &str,
         attr_name_node: Node,
@@ -171,12 +214,70 @@ impl TrunkAttrState {
         Some(CompletionResponse::Array(comps.collect()))
     }
 
+    fn complete_script_attr_name(
+        &self,
+        s: &str,
+        attr_names: Vec<&str>,
+        attr_name_node: Node,
+    ) -> Option<CompletionResponse> {
+        let attr_name_str = attr_name_node.utf8_text(s.as_bytes()).ok()?;
+        let comps = Script::ASSET_ATTRS
+            .iter()
+            .filter(|(attr_name, _, _)| {
+                attr_name.starts_with(attr_name_str) && !attr_names.contains(attr_name)
+            })
+            .map(|(attr_name, doc, _)| CompletionItem {
+                label: attr_name.to_string(),
+                documentation: Some(Documentation::MarkupContent(MarkupContent {
+                    kind: MarkupKind::Markdown,
+                    value: doc.to_string(),
+                })),
+                ..Default::default()
+            })
+            .collect();
+
+        Some(CompletionResponse::Array(comps))
+    }
+
+    fn complete_script_attr_value(
+        &self,
+        s: &str,
+        attr_name_node: Node,
+    ) -> Option<CompletionResponse> {
+        let attr_name_str = attr_name_node.utf8_text(s.as_bytes()).ok()?;
+        let comps = Script::ASSET_ATTRS
+            .iter()
+            .find(|(attr_name, _, _)| attr_name_str == *attr_name)
+            .and_then(|(_, _, values)| match values {
+                ValueRequirment::Values(_, vals) => Some(
+                    vals.iter()
+                        .map(|(val, doc)| CompletionItem {
+                            label: val.to_string(),
+                            documentation: Some(Documentation::MarkupContent(MarkupContent {
+                                value: doc.to_string(),
+                                kind: MarkupKind::Markdown,
+                            })),
+                            ..Default::default()
+                        })
+                        .collect(),
+                ),
+                _ => None,
+            })?;
+        Some(CompletionResponse::Array(comps))
+    }
+
     #[instrument(level = "trace", skip(elem_nodes))]
     pub fn from_elem_items<'a, I: Iterator<Item = Node<'a>>>(
         s: &str,
-        elem_nodes: I,
+        mut elem_nodes: I,
     ) -> Option<Self> {
-        let mut attr_state = Self::default();
+        let tag_name = TagName::from(
+            elem_nodes
+                .next()
+                .filter(|tag_name| tag_name.kind() == "tag_name")
+                .and_then(|tag_name| tag_name.utf8_text(s.as_bytes()).ok())?,
+        );
+        let mut attr_state = Self::with_tag_name(tag_name);
         for ch in elem_nodes {
             let Some(attr_name) = ch.named_child(0).filter(|c| c.kind() == "attribute_name") else {
                 continue;
@@ -224,8 +325,6 @@ impl TrunkAttrState {
 
 pub fn completions(pos: GridIndex, n: Node, text: &Text) -> Option<CompletionResponse> {
     let s = text.text.as_str();
-    let lang = n.language();
-    let attr_id = lang.id_for_node_kind("attribute", true);
     let mut cursor = QueryCursor::new();
     let element_id = TRUNK_ATTRS
         .capture_names()
@@ -272,8 +371,7 @@ pub fn completions(pos: GridIndex, n: Node, text: &Text) -> Option<CompletionRes
 
     let mut cursor = current.node.walk();
     let children = current.node.named_children(&mut cursor);
-    let attr_state =
-        TrunkAttrState::from_elem_items(s, children.filter(|ch| ch.kind_id() == attr_id))?;
+    let attr_state = TrunkAttrState::from_elem_items(s, children)?;
 
-    attr_state.link_to_completion(s, in_pos)
+    attr_state.to_completion(s, in_pos)
 }

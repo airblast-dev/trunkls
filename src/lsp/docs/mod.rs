@@ -6,9 +6,11 @@ mod rel_inline;
 mod rel_rust;
 mod rel_sass_scss;
 mod rel_tailwind;
+mod script;
 
 use constcat::concat_slices;
 use lsp_types::{CompletionItem, Documentation, HoverContents, MarkupContent, MarkupKind};
+use script::Src;
 
 #[derive(Clone, Copy)]
 pub enum ValueRequirment {
@@ -149,7 +151,7 @@ macro_rules! optional_asset_attrs {
     };
 }
 
-bulk_struct! {DataTrunk, RelCopyDir, RelCopyFile, RelCss, RelIcon, RelInline, RelRust, RelSass, RelScss, RelTailwind}
+bulk_struct! {DataTrunk, RelCopyDir, RelCopyFile, RelCss, RelIcon, RelInline, RelRust, RelSass, RelScss, RelTailwind, Script}
 
 load_md!(DataTrunk, "data_trunk", "data-trunk");
 load_md!(RelCopyDir, "rel_copy_dir", "copy-dir");
@@ -161,6 +163,7 @@ load_md!(RelRust, "rel_rust", "rust");
 load_md!(RelSass, "rel_sass", "sass");
 load_md!(RelScss, "rel_sass", "scss");
 load_md!(RelTailwind, "rel_tailwind", "tailwind-css");
+load_md! {Script, "script", "script"}
 
 completions! {DataTrunk, RelCopyDir, RelCopyFile, RelCss, RelIcon, RelInline, RelRust, RelSass, RelScss, RelTailwind}
 required_asset_attrs! {RelCopyFile, ("href", rel_copy_file::Href::as_str(), ValueRequirment::Requires(true))}
@@ -248,5 +251,8 @@ optional_asset_attrs! {RelRust,
     ("data-cross-origin", rel_rust::DataCrossOrigin::as_str(), ValueRequirment::Requires(true))
 }
 
-asset_attrs! {RelCopyDir, RelCopyFile, RelCss, RelIcon, RelInline, RelRust, RelSass, RelScss, RelTailwind}
-hover! {DataTrunk, RelCopyDir, RelCopyFile, RelCss, RelIcon, RelInline, RelRust, RelSass, RelScss, RelTailwind}
+required_asset_attrs! {Script, ("src", script::Src::as_str(), ValueRequirment::Requires(true))}
+optional_asset_attrs! {Script, DATA_NO_MINIFY, DATA_TARGET_PATH}
+
+asset_attrs! {RelCopyDir, RelCopyFile, RelCss, RelIcon, RelInline, RelRust, RelSass, RelScss, RelTailwind, Script}
+hover! {DataTrunk, RelCopyDir, RelCopyFile, RelCss, RelIcon, RelInline, RelRust, RelSass, RelScss, RelTailwind, Script}
