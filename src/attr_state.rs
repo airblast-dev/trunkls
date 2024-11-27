@@ -6,9 +6,9 @@ use crate::lsp::docs::ValueRequirment;
 pub struct TrunkAttrState {
     // Wether a data-trunk attribute is already present.
     pub data_trunk: bool,
-    // If an asset type is currently selected.
-    //
-    // for example `rel=""` is `None` but `rel="css"` is `Some(AssetType::Css)`
+    /// If an asset type is currently selected.
+    ///
+    /// for example `rel=""` is `None` but `rel="css"` is `Some(AssetType::Css)`
     pub rel: Option<AssetType>,
     pub tag_name: TagName,
 }
