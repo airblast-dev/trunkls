@@ -1,5 +1,8 @@
 use std::str::FromStr;
 
+use tracing::{error, instrument, trace};
+use tree_sitter::Node;
+
 use crate::lsp::docs::ValueRequirment;
 
 #[derive(Clone, Debug, Default)]
@@ -19,6 +22,69 @@ impl TrunkAttrState {
             tag_name,
             ..Default::default()
         }
+    }
+
+    pub fn is_rel_val(&self, s: &str, n: Node) -> bool {
+        if self.rel.is_some() {
+            return false;
+        }
+
+        n.utf8_text(s.as_bytes()).is_ok_and(|s| s == "rel")
+    }
+
+    #[instrument(level = "trace", skip(elem_nodes))]
+    pub fn from_elem_items<'a, I: Iterator<Item = Node<'a>>>(
+        s: &str,
+        mut elem_nodes: I,
+    ) -> Option<Self> {
+        let tag_name = TagName::from(
+            elem_nodes
+                .next()
+                .filter(|tag_name| tag_name.kind() == "tag_name")
+                .and_then(|tag_name| tag_name.utf8_text(s.as_bytes()).ok())?,
+        );
+        let mut attr_state = Self::with_tag_name(tag_name);
+        for ch in elem_nodes {
+            let Some(attr_name) = ch.named_child(0).filter(|c| c.kind() == "attribute_name") else {
+                continue;
+            };
+
+            let Ok(attr_name_str) = attr_name.utf8_text(s.as_bytes()) else {
+                error!("unable to get UTF8 from attribute name node");
+                continue;
+            };
+
+            if !attr_state.data_trunk && attr_name_str == "data-trunk" {
+                attr_state.data_trunk = true;
+            }
+
+            let Some(attr_val) = ch.named_child(1).and_then(|c| {
+                if c.kind() == "attribute_value" {
+                    Some(c)
+                } else if c.kind() == "quoted_attribute_value" {
+                    c.named_child(0).filter(|c| c.kind() == "attribute_value")
+                } else {
+                    None
+                }
+            }) else {
+                error!(
+                    "cant get attr val child for = {:?}",
+                    ch.utf8_text(s.as_bytes())
+                );
+                continue;
+            };
+
+            let Ok(attr_val_str) = attr_val.utf8_text(s.as_bytes()) else {
+                error!("unable to get UTF8 from attribute value node");
+                continue;
+            };
+
+            if attr_name_str == "rel" {
+                attr_state.rel = AssetType::from_str(attr_val_str).ok();
+            }
+        }
+
+        Some(attr_state)
     }
 }
 
