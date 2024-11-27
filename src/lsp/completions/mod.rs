@@ -7,9 +7,9 @@ use tree_sitter::{Node, QueryCursor};
 
 use crate::{
     attr_state::{AssetType, TagName, TrunkAttrState},
-    texter::{change::GridIndex, core::text::Text},
     utils::{find_attr, is_attr_name_completion, is_attr_value_completion},
 };
+use texter::{change::GridIndex, core::text::Text};
 
 use super::{
     docs::{self, Script, ValueRequirment},

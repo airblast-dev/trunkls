@@ -3,8 +3,10 @@ use tracing::{instrument, trace};
 use tree_sitter::Node;
 
 use crate::{
-    attr_state::TrunkAttrState, texter::{change::GridIndex, core::text::Text}, utils::{find_attr, find_elem}
+    attr_state::TrunkAttrState,
+    utils::{find_attr, find_elem},
 };
+use texter::{change::GridIndex, core::text::Text};
 
 use super::docs::{DataTrunk, ValueRequirment};
 

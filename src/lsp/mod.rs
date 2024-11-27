@@ -20,7 +20,8 @@ use lsp_types::{
 use tracing::warn;
 use tree_sitter::Parser;
 
-use crate::{init::TextFn, texter::change::{Change, GridIndex}};
+use crate::init::TextFn;
+use texter::change::{Change, GridIndex};
 
 pub fn main_loop(text_fn: TextFn, con: Connection) -> anyhow::Result<()> {
     let mut parser = Parser::new();

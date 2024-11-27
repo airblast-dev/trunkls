@@ -4,7 +4,7 @@ use lsp_types::{
     TextDocumentSyncKind,
 };
 
-use crate::texter::core::text::Text;
+use texter::core::text::Text;
 
 pub type TextFn = fn(String) -> Text;
 

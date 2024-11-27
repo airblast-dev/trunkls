@@ -1,5 +1,4 @@
 mod attr_state;
-mod texter;
 mod init;
 mod lsp;
 mod utils;
