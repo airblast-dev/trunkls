@@ -3,7 +3,8 @@ use lsp_types::{
     PositionEncodingKind, ServerCapabilities, ServerInfo, TextDocumentSyncCapability,
     TextDocumentSyncKind,
 };
-use texter::core::text::Text;
+
+use crate::texter::core::text::Text;
 
 pub type TextFn = fn(String) -> Text;
 

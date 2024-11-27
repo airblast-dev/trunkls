@@ -512,16 +512,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "texter"
-version = "0.1.0"
-dependencies = [
- "lsp-types",
- "memchr",
- "tracing",
- "tree-sitter",
-]
-
-[[package]]
 name = "thiserror"
 version = "1.0.66"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -651,10 +641,10 @@ dependencies = [
  "fxhash",
  "lsp-server",
  "lsp-types",
+ "memchr",
  "serde_json",
  "shellexpand",
  "streaming-iterator",
- "texter",
  "tracing",
  "tracing-subscriber",
  "tree-sitter",

@@ -17,11 +17,10 @@ use lsp_types::{
     CompletionParams, DidChangeTextDocumentParams, DidCloseTextDocumentParams,
     DidOpenTextDocumentParams, HoverParams, TextDocumentPositionParams, Uri,
 };
-use texter::change::{Change, GridIndex};
 use tracing::warn;
 use tree_sitter::Parser;
 
-use crate::init::TextFn;
+use crate::{init::TextFn, texter::change::{Change, GridIndex}};
 
 pub fn main_loop(text_fn: TextFn, con: Connection) -> anyhow::Result<()> {
     let mut parser = Parser::new();

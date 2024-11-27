@@ -1,16 +1,13 @@
-use std::str::FromStr;
-
 use lsp_types::{
     CompletionItem, CompletionItemKind, CompletionResponse, Documentation, InsertTextFormat,
     MarkupContent, MarkupKind,
 };
 use streaming_iterator::{IntoStreamingIterator, StreamingIterator};
-use texter::{change::GridIndex, core::text::Text};
-use tracing::{error, instrument, trace};
 use tree_sitter::{Node, QueryCursor};
 
 use crate::{
     attr_state::{AssetType, TagName, TrunkAttrState},
+    texter::{change::GridIndex, core::text::Text},
     utils::{find_attr, is_attr_name_completion, is_attr_value_completion},
 };
 

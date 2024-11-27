@@ -1,6 +1,6 @@
 use std::str::FromStr;
 
-use tracing::{error, instrument, trace};
+use tracing::{error, instrument};
 use tree_sitter::Node;
 
 use crate::lsp::docs::ValueRequirment;

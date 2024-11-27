@@ -10,12 +10,11 @@ mod script;
 
 use constcat::concat_slices;
 use lsp_types::{CompletionItem, Documentation, HoverContents, MarkupContent, MarkupKind};
-use script::Src;
 
 #[derive(Clone, Copy)]
 pub enum ValueRequirment {
     Requires(bool),
-    Allows(bool),
+    Allows,
     Values(bool, &'static [(&'static str, &'static str)]),
 }
 
@@ -205,7 +204,7 @@ required_asset_attrs! {RelTailwind,
     ("href", rel_tailwind::Href::as_str(), ValueRequirment::Requires(true))
 }
 optional_asset_attrs! {RelTailwind,
-    ("data-inline", rel_tailwind::DataInline::as_str(), ValueRequirment::Allows(false)),
+    ("data-inline", rel_tailwind::DataInline::as_str(), ValueRequirment::Allows),
     DATA_NO_MINIFY,
     DATA_TARGET_PATH,
     DATA_INTEGRITY
@@ -213,14 +212,14 @@ optional_asset_attrs! {RelTailwind,
 
 required_asset_attrs! {RelSass, ("href", rel_sass_scss::Href::as_str(), ValueRequirment::Requires(true))}
 optional_asset_attrs! {RelSass,
-    ("data-inline", rel_sass_scss::DataInline::as_str(), ValueRequirment::Allows(false)),
+    ("data-inline", rel_sass_scss::DataInline::as_str(), ValueRequirment::Allows),
     DATA_TARGET_PATH,
     DATA_INTEGRITY
 }
 
 required_asset_attrs! {RelScss, ("href", rel_sass_scss::Href::as_str(), ValueRequirment::Requires(true))}
 optional_asset_attrs! {RelScss,
-    ("data-inline", rel_sass_scss::DataInline::as_str(), ValueRequirment::Allows(false)),
+    ("data-inline", rel_sass_scss::DataInline::as_str(), ValueRequirment::Allows),
     DATA_TARGET_PATH,
     DATA_INTEGRITY
 }
@@ -237,15 +236,15 @@ optional_asset_attrs! {RelRust,
         ]
     )),
     ("data-cargo-features", rel_rust::DataCargoFeatures::as_str(), ValueRequirment::Requires(true)),
-    ("data-cargo-no-default-features", rel_rust::DataCargoNoDefaultFeatures::as_str(), ValueRequirment::Allows(false)),
-    ("data-cargo-all-features", rel_rust::DataCargoAllFeatures::as_str(), ValueRequirment::Allows(false)),
-    ("data-wasm-opt", rel_rust::DataWasmOpt::as_str(), ValueRequirment::Allows(true)),
-    ("data-wasm-opt-params", rel_rust::DataWasmOptParams::as_str(), ValueRequirment::Allows(true)),
-    ("data-keep-debug", rel_rust::DataKeepDebug::as_str(), ValueRequirment::Allows(false)),
-    ("data-no-demangle", rel_rust::DataNoDemangle::as_str(), ValueRequirment::Allows(false)),
-    ("data-reference-types", rel_rust::DataReferenceTypes::as_str(), ValueRequirment::Allows(false)),
-    ("data-weak-refs", rel_rust::DataWeakRefs::as_str(), ValueRequirment::Allows(false)),
-    ("data-typescript", rel_rust::DataTypeScript::as_str(), ValueRequirment::Allows(true)),
+    ("data-cargo-no-default-features", rel_rust::DataCargoNoDefaultFeatures::as_str(), ValueRequirment::Allows),
+    ("data-cargo-all-features", rel_rust::DataCargoAllFeatures::as_str(), ValueRequirment::Allows),
+    ("data-wasm-opt", rel_rust::DataWasmOpt::as_str(), ValueRequirment::Allows),
+    ("data-wasm-opt-params", rel_rust::DataWasmOptParams::as_str(), ValueRequirment::Allows),
+    ("data-keep-debug", rel_rust::DataKeepDebug::as_str(), ValueRequirment::Allows),
+    ("data-no-demangle", rel_rust::DataNoDemangle::as_str(), ValueRequirment::Allows),
+    ("data-reference-types", rel_rust::DataReferenceTypes::as_str(), ValueRequirment::Allows),
+    ("data-weak-refs", rel_rust::DataWeakRefs::as_str(), ValueRequirment::Allows),
+    ("data-typescript", rel_rust::DataTypeScript::as_str(), ValueRequirment::Allows),
     ("data-bindgen-target", rel_rust::DataBindgenTarget::as_str(), ValueRequirment::Requires(true)),
     ("data-loader-shim", rel_rust::DataLoaderShim::as_str(), ValueRequirment::Requires(false)),
     ("data-cross-origin", rel_rust::DataCrossOrigin::as_str(), ValueRequirment::Requires(true))
