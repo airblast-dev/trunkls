@@ -50,7 +50,7 @@ fn handle_notification(
             let p: DidChangeTextDocumentParams = serde_json::from_value(noti.params)?;
             let (tree, text) = docs.get_mut(&p.text_document.uri).unwrap();
             for ch in p.content_changes.into_iter() {
-                text.update(Change::from(ch), tree);
+                text.update(Change::from(ch), tree)?;
             }
         }
         DidOpenTextDocument::METHOD => {
@@ -93,7 +93,7 @@ fn handle_request(parser: &mut Parser, req: lsp_server::Request) -> anyhow::Resu
                 .get_mut(&uri)
                 .context("Requested completion for unknown document.")?;
             *tree = parser.parse(text.text.as_str(), Some(tree)).unwrap();
-            pos.normalize(text);
+            pos.normalize(text)?;
             return Ok(Response::new_ok(
                 req.id,
                 completions(pos, tree.root_node(), text),
@@ -110,7 +110,7 @@ fn handle_request(parser: &mut Parser, req: lsp_server::Request) -> anyhow::Resu
                 .context("Requested hover for unknown document.")?;
             *tree = parser.parse(text.text.as_str(), Some(tree)).unwrap();
             let mut pos = GridIndex::from(pos);
-            pos.normalize(text);
+            pos.normalize(text)?;
             return Ok(Response::new_ok(req.id, hover(pos, tree.root_node(), text)));
         }
         _ => {}

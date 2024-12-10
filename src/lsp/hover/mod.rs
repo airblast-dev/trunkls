@@ -54,9 +54,9 @@ impl TrunkAttrState {
 
         trace!("Found asset specific hover");
         let mut start_pos = GridIndex::from(in_pos.start_position());
-        start_pos.denormalize(text);
+        start_pos.denormalize(text).unwrap();
         let mut end_pos = GridIndex::from(in_pos.end_position());
-        end_pos.denormalize(text);
+        end_pos.denormalize(text).unwrap();
         Some(Hover {
             contents: HoverContents::Markup(MarkupContent {
                 kind: MarkupKind::Markdown,
@@ -91,9 +91,9 @@ impl TrunkAttrState {
         };
 
         let mut start_pos = GridIndex::from(in_pos.start_position());
-        start_pos.denormalize(text);
+        start_pos.denormalize(text).unwrap();
         let mut end_pos = GridIndex::from(in_pos.end_position());
-        end_pos.denormalize(text);
+        end_pos.denormalize(text).unwrap();
 
         Some(Hover {
             contents: HoverContents::Markup(MarkupContent {

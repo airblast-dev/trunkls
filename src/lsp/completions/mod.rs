@@ -293,7 +293,7 @@ pub fn completions(pos: GridIndex, n: Node, text: &Text) -> Option<CompletionRes
 
     // If the end of the found node is " we shouldn't return a completion as the cursor is after a
     // quote.
-    let byte_pos = text.br_indexes.row_start(pos.row) + pos.col;
+    let byte_pos = text.br_indexes.row_start(pos.row).unwrap() + pos.col;
     let prev_byte = s.as_bytes()[byte_pos.saturating_sub(1)];
     if matches!(prev_byte, b'\'' | b'"')
         && in_pos.kind() == "quoted_attribute_value"
