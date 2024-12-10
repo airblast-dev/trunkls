@@ -652,7 +652,6 @@ dependencies = [
  "fxhash",
  "lsp-server",
  "lsp-types",
- "memchr",
  "serde_json",
  "shellexpand",
  "streaming-iterator",

@@ -17,7 +17,6 @@ tree-sitter = "0.24.3"
 tree-sitter-html = "0.23.0" 
 streaming-iterator = "0.1.9"
 constcat = "0.5.1"
-memchr = "2.7.4"
 texter = { git = "https://github.com/airblast-dev/texter.git", features = ["tree-sitter", "lsp-types"] }
 
 [profile.release]
