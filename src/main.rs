@@ -17,16 +17,21 @@ use tracing_subscriber::EnvFilter;
 struct Config {
     #[arg(short = 'o', long = "log-file")]
     log_file: Option<String>,
+    #[arg(long = "version", action)]
+    version: bool,
 }
 
 fn main() -> anyhow::Result<()> {
+    let cfg = Config::parse();
+    if cfg.version {
+        println!(env!("CARGO_PKG_VERSION"));
+        return Ok(());
+    }
     let (con, _th) = Connection::stdio();
     let (id, resp) = con.initialize_start()?;
     let resp: InitializeParams = serde_json::from_value(resp)?;
     let (text_fn, init_res) = initialize_result(&resp);
     con.initialize_finish(id, serde_json::to_value(init_res)?)?;
-
-    let cfg = Config::parse();
 
     if let Some(lf) = cfg.log_file.as_deref().map(shellexpand::full) {
         log_to_file(lf?)?;
