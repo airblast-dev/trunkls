@@ -1,0 +1,29 @@
+name: Run tests
+run-name: ${{ github.ref }} 
+on: 
+  pull_request:
+    types: [opened, edited]
+    paths:
+      - '**.rs'
+  push:
+    types: []
+    paths:
+      - '**.rs'
+
+jobs:
+  tests:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Quick Lint
+        run: cargo check --all-features
+      - name: Lint
+        run: cargo clippy --all-features
+      - name: Tests
+        run: cargo test --all-features
+      - name: Machete
+        uses: bnjbvr/cargo-machete@main
