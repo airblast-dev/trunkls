@@ -4,8 +4,7 @@ use tree_sitter::Query;
 
 /// Query for all elements containing a `data-trunk` attribute.
 pub static TRUNK_ATTRS: LazyLock<Query> = LazyLock::new(|| {
-    #[rustfmt::skip]
-    const QS: &str =r#"
+    const QS: &str = r#"
     (_
             (tag_name) @tag.name
             (#any-of? @tag.name "link" "script")
