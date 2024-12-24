@@ -514,9 +514,9 @@ dependencies = [
 
 [[package]]
 name = "texter"
-version = "0.1.1"
+version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ef5a51f25362703bbb26e6d854d9b5af36e72b287dbdf9cd5ccf9daed4135ea9"
+checksum = "9b2c274e8d384dd40be6041fa35671ca7c5587250888ac0e44ed1f2f9ba6b9b3"
 dependencies = [
  "lsp-types",
  "memchr",
