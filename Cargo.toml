@@ -2,6 +2,12 @@
 name = "trunkls"
 version = "0.1.0"
 edition = "2021"
+authors = ["Tayfun Bocek <tayfunbocek@live.ca>"]
+description = "A language server for Trunk's custom HTML attributes"
+readme = "README.md"
+repository = "https://github.com/airblast-dev/trunkls"
+license = "GPL-3.0"
+keywords = ["html", "lsp", "language", "trunk", "wasm", "editor"]
 
 [dependencies]
 lsp-types = { version = "0.97.0" }
