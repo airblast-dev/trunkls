@@ -2,7 +2,7 @@
 
 Trunkls is an LSP server that provides hover, and completions for clients.
 
-The provided hover and completions are based off of `trunk`'s [assets](https://trunkrs.dev/assets/) section with some slight modifications to make them more readable in editors.
+The provided hover and completions are based off of [trunk](https://github.com/trunk-rs/trunk) [assets](https://trunkrs.dev/assets/) section with some slight modifications to make them more readable in editors.
 
 # Usage
 
