@@ -2,6 +2,26 @@ Trunkls is an LSP server that provides hover, and completions for clients.
 
 The provided hover and completions are based off of `trunk`'s [assets](https://trunkrs.dev/assets/) section with some slight modifications to make them more readable in editors.
 
+# Usage
+
+## Attribute completion
+`trunkls` provides completions for all attributes `trunk` supports. Only attributes that are compatible with the current HTML tag will be displayed, this includes asset types and the tag name.
+
+![image](https://github.com/user-attachments/assets/c28002c9-77c8-4d6f-989b-f7d7fe65c807)
+
+Attribute values are also supported!
+
+![image](https://github.com/user-attachments/assets/854b365d-3293-447a-9811-5ec5c8b9c510)
+
+Hover information is also supported. 
+In some cases other LSP servers may return doc information for an attribute without the context of them in `trunk` and cause issues if it takes precedence in the editor.
+All `trunk` attributes unique to `trunk` work without issues.
+
+![image](https://github.com/user-attachments/assets/c855c672-09ef-47b4-b0b5-31b282fa69a7)
+
+
+
+
 ## Installation
 After cloning the repository, you can run `cargo install --path trunkls` to compile and install the binary. 
 
