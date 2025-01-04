@@ -27,7 +27,12 @@ All `trunk` attributes unique to `trunk` work without issues.
 
 
 ## Installation
-After cloning the repository, you can run `cargo install --path trunkls` to compile and install the binary. 
+
+### Installing the binary
+
+The crate is added to `crates.io`, installing is easy as running `cargo install trunkls` and adding the binary to your `$PATH`.
+
+You can also clone the repository and compile it yourself by running `cargo install --path trunkls`. 
 
 ### VsCode
 Running `vsce package` inside `trunkls/vscode` will build the extension. From there you can select the extension file and install it through VsCode.
