@@ -30,7 +30,7 @@ All `trunk` attributes unique to `trunk` work without issues.
 
 ### Installing the binary
 
-The crate is added to `crates.io`, installing is easy as running `cargo install trunkls` and adding the binary to your `$PATH`.
+The crate is added to `crates.io` so installing is easy as running `cargo install trunkls` and adding the binary to your `$PATH`.
 
 You can also clone the repository and compile it yourself by running `cargo install --path trunkls`. 
 
