@@ -1,6 +1,6 @@
 [package]
 name = "trunkls"
-version = "0.1.1"
+version = "0.1.2"
 edition = "2021"
 authors = ["Tayfun Bocek <tayfunbocek@live.ca>"]
 description = "A language server for Trunk's custom HTML attributes"
